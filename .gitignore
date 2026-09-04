@@ -1,0 +1,6 @@
+.worktrees/
+.superpowers/
+dist/
+*.log
+state.json
+config.json
