@@ -73,3 +73,24 @@ User Function MonGetUnidades(oConfig)
         Return {}
     EndIf
 Return oConfig["unidades"]
+
+User Function MonMontarMensagem(cUnidade, cHost, nPort, cStatusNovo)
+    Local cTexto
+
+    If cStatusNovo == "DOWN"
+        cTexto := "[ALERTA] " + cUnidade + " (" + cHost + ":" + AllTrim(Str(nPort)) + ") caiu"
+    Else
+        cTexto := "[OK] " + cUnidade + " (" + cHost + ":" + AllTrim(Str(nPort)) + ") voltou"
+    EndIf
+Return cTexto
+
+User Function MonNotificarTelegram(cToken, cChatId, cTexto)
+    Local cUrl    := "https://api.telegram.org/bot" + cToken + "/sendMessage"
+    Local oBody   := JsonObject():New()
+    Local nStatus
+
+    oBody["chat_id"] := cChatId
+    oBody["text"]    := cTexto
+
+    nStatus := FWHttpPost(cUrl, oBody:ToJson(), "application/json")
+Return (nStatus >= 200 .And. nStatus < 300)

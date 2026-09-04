@@ -88,5 +88,20 @@ User Function MonitorLibTest()
     ConOut("teste18_unidades_chave_ausente=" + IIF(Len(aUnidades) == 0, "SIM", "NAO"))
     FErase(cConfigPath)
 
+    Local cMsgDown := MonMontarMensagem("TCPSP", "10.0.200.62", 4000, "DOWN")
+    Local cMsgUp   := MonMontarMensagem("TCPSP", "10.0.200.62", 4000, "UP")
+    ConOut("teste19_msg_down=" + cMsgDown)
+    ConOut("teste20_msg_up=" + cMsgUp)
+    ConOut("teste21_msg_down_tem_unidade=" + IIF("TCPSP" $ cMsgDown, "SIM", "NAO"))
+    ConOut("teste22_msg_down_tem_host_porta=" + IIF("10.0.200.62:4000" $ cMsgDown, "SIM", "NAO"))
+
+    Local cTokenTeste := GetEnv("MONITOR_TEST_TELEGRAM_TOKEN")
+    Local cChatTeste  := GetEnv("MONITOR_TEST_TELEGRAM_CHAT")
+    If cTokenTeste == "" .Or. cTokenTeste == "Nil"
+        ConOut("teste23_telegram=skip_sem_token")
+    Else
+        ConOut("teste23_telegram=" + IIF(MonNotificarTelegram(cTokenTeste, cChatTeste, "teste automatizado do monitor"), "SIM", "NAO"))
+    EndIf
+
     ConOut("MONITOR_LIB_TEST_FIM")
 Return
