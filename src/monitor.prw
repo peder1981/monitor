@@ -1,0 +1,35 @@
+#include "monitor_lib.prw"
+
+User Function MonitorMain()
+    Local cConfigPath := "config.json"
+    Local cStatePath  := "state.json"
+    Local cLogPath    := "monitor.log"
+    Local oConfig
+    Local oState
+    Local aUnidades
+    Local i
+
+    oConfig := MonLoadConfig(cConfigPath)
+    If oConfig == Nil
+        ConOut("ERRO FATAL: nao foi possivel ler " + cConfigPath)
+        Return
+    EndIf
+
+    aUnidades := MonGetUnidades(oConfig)
+    If Len(aUnidades) == 0
+        ConOut("ERRO FATAL: config.json sem a chave 'unidades' ou lista vazia")
+        Return
+    EndIf
+
+    oState := MonLoadState(cStatePath)
+
+    ConOut("Monitor iniciado. " + AllTrim(Str(Len(aUnidades))) + " unidade(s), intervalo de " + AllTrim(Str(oConfig["intervaloSegundos"])) + "s.")
+
+    While .T.
+        For i := 1 To Len(aUnidades)
+            MonProcessarUnidade(aUnidades[i], oConfig["iniPath"], oConfig["timeoutMs"], oState, cLogPath, oConfig["telegramBotToken"], oConfig["telegramChatId"])
+        Next
+        MonSaveState(cStatePath, oState)
+        Sleep(oConfig["intervaloSegundos"] * 1000)
+    EndDo
+Return
