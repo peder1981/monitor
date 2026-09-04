@@ -7,33 +7,49 @@ host do appserver, porta configurável) e um license server centralizado
 (único para todo o ambiente) — ver `portaDbaccess`/`licenseServer` em
 "Configurar" abaixo.
 
-## Compilar
+## Instalar (sem compilar nada)
 
-A partir de um checkout do AdvPP (https://github.com/peder1981/AdvPP):
+Este monitor **não precisa ser compilado**. Ele roda interpretado, direto
+do `.prw`, pelo `advplc.exe` já pronto:
 
-    ./advplc build /caminho/para/monitor/src/monitor.prw -o monitor.exe
+1. Baixe o `advplc.exe` em https://github.com/peder1981/AdvPP/releases
+   (zip do Windows) — esse binário já vem com tudo que ele precisa
+   embutido, não exige instalar nada mais na máquina.
+2. Copie pra uma pasta na máquina Windows: `advplc.exe`,
+   `src/monitor.prw`, `src/monitor_lib.prw` e o seu `config.json`
+   (ver "Configurar" abaixo) — os quatro arquivos juntos, na mesma pasta.
+3. Rode com `advplc.exe run monitor.prw` (ver "Rodar" abaixo).
 
-Rodando em Linux, gera um binário do SO atual. Cross-compile pra
-Windows a partir do Linux (`GOOS=windows GOARCH=amd64 ./advplc build ...`)
-foi testado e **não funciona**: o `build` do `advplc` embarca a UI Fyne
-(mesmo pra um programa headless como este), que puxa `go-gl` com
-bindings OpenGL nativos (cgo) — o build falha com:
+**Por que não gerar um `monitor.exe` compilado:** `advplc build` sempre
+linka a biblioteca de UI Fyne, mesmo pra um programa 100% console como
+este, e Fyne exige cgo (compilador C) pra linkar — em qualquer
+plataforma, Windows incluído. Na prática isso significa que
+`advplc build` (rodando cross-compile do Linux, ou nativo já na própria
+máquina Windows) pede um toolchain C (MinGW-w64/TDM-GCC no Windows) que
+normalmente não está instalado, e falha sem gerar o executável. Isso já
+foi testado dos dois jeitos:
 
-    imports github.com/go-gl/gl/v2.1/gl: build constraints exclude all
-    Go files in .../go-gl@.../v2.1/gl
+- Cross-compile do Linux (`GOOS=windows GOARCH=amd64 ./advplc build ...`):
+  falha com `imports github.com/go-gl/gl/v2.1/gl: build constraints
+  exclude all Go files in .../go-gl@.../v2.1/gl` — não é o `GOOS`/`GOARCH`
+  não ser respeitado, é falta de toolchain OpenGL/cgo do SO alvo.
+- Nativo, direto na máquina Windows (`advplc.exe build ...`): pede pra
+  instalar MinGW/gcc pelo mesmo motivo (cgo é exigido em qualquer SO,
+  não só em cross-compile).
 
-Ou seja, não é falta de `GOOS`/`GOARCH` ser respeitado — o processo de
-build interno do `advplc` depende de toolchain nativa (cgo + headers
-GL) do SO alvo, que não está disponível cross-compilando do Linux.
-**Alternativa**: compile direto na máquina Windows, com um checkout do
-AdvPP e o `advplc.exe` instalado lá:
-
-    advplc.exe build C:\caminho\para\monitor\src\monitor.prw -o monitor.exe
+Rodar via `advplc.exe run monitor.prw` evita isso por completo: o
+`advplc.exe` distribuído nas Releases já foi compilado (com Fyne e cgo)
+uma única vez, pelos mantenedores do AdvPP — a máquina que só *roda* o
+monitor nunca precisa de compilador nenhum. Se um dia você realmente
+precisar de um `.exe` próprio (ex: renomear o processo, esconder que é
+AdvPL), instale o MinGW-w64 na máquina Windows e repita o comando
+`advplc.exe build src\monitor.prw -o monitor.exe` — mas isso é opcional,
+não é o caminho recomendado.
 
 ## Configurar
 
-Copie `config.example.json` para `config.json` ao lado do `monitor.exe`
-e preencha:
+Copie `config.example.json` para `config.json` na mesma pasta do
+`advplc.exe`/`monitor.prw` e preencha:
 
 - `iniPath`: caminho completo do `.ini` de conexão do SmartClient na
   máquina Windows (ex: `C:\\totvs\\appserver.ini`).
@@ -93,10 +109,14 @@ de setup.
 
 ## Rodar
 
-    monitor.exe
+    advplc.exe run monitor.prw
 
 Fica em loop pra sempre, gerando `monitor.log` (toda checagem) e
-`state.json` (último status conhecido de cada unidade) ao lado do
-`.exe`. Agende no Task Scheduler do Windows como "ao iniciar o
-sistema", sem precisar de serviço Windows — o `Sleep` interno já
-mantém o processo vivo.
+`state.json` (último status conhecido de cada unidade) na mesma pasta.
+Agende no Task Scheduler do Windows como "ao iniciar o sistema", sem
+precisar de serviço Windows — o `Sleep` interno já mantém o processo
+vivo. **Importante**: configure "Start in" (diretório de trabalho) da
+tarefa agendada pra essa mesma pasta — `config.json`/`state.json`/
+`monitor.log` são caminhos relativos, e o Task Scheduler por padrão
+inicia em `%windir%\system32`, onde o monitor não vai achar nada e sai
+sem avisar em lugar nenhum visível.
