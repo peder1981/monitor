@@ -76,5 +76,17 @@ User Function MonitorLibTest()
 
     ConOut("teste16_config_ausente=" + IIF(MonLoadConfig("nao_existe.json") == Nil, "SIM", "NAO"))
 
+    cConfigPath := "test_config_malformado.json"
+    MemoWrite(cConfigPath, "{invalido")
+    ConOut("teste17_config_malformado=" + IIF(MonLoadConfig(cConfigPath) == Nil, "SIM", "NAO"))
+    FErase(cConfigPath)
+
+    cConfigPath := "test_config_sem_unidades.json"
+    MemoWrite(cConfigPath, '{"iniPath":"C:\\totvs\\appserver.ini","intervaloSegundos":60}')
+    oConfig := MonLoadConfig(cConfigPath)
+    aUnidades := MonGetUnidades(oConfig)
+    ConOut("teste18_unidades_chave_ausente=" + IIF(Len(aUnidades) == 0, "SIM", "NAO"))
+    FErase(cConfigPath)
+
     ConOut("MONITOR_LIB_TEST_FIM")
 Return
