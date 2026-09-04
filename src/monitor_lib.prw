@@ -94,3 +94,29 @@ User Function MonNotificarTelegram(cToken, cChatId, cTexto)
 
     nStatus := FWHttpPost(cUrl, oBody:ToJson(), "application/json")
 Return (nStatus >= 200 .And. nStatus < 300)
+
+User Function MonProcessarUnidade(cUnidade, cIniPath, nTimeoutMs, oState, cLogPath, cToken, cChatId)
+    Local oRes
+    Local cStatusAnterior
+    Local cStatusNovo
+    Local cMsg
+    Local e
+
+    Try
+        oRes := MonCheckUnidade(cUnidade, cIniPath, nTimeoutMs)
+        cStatusAnterior := MonGetStatusAnterior(oState, cUnidade)
+        cStatusNovo := IIF(oRes["UP"], "UP", "DOWN")
+
+        MonLog(cLogPath, cUnidade + " " + oRes["HOST"] + ":" + AllTrim(Str(oRes["PORT"])) + " status=" + cStatusNovo)
+
+        If cStatusNovo != cStatusAnterior
+            cMsg := MonMontarMensagem(cUnidade, oRes["HOST"], oRes["PORT"], cStatusNovo)
+            If !MonNotificarTelegram(cToken, cChatId, cMsg)
+                MonLog(cLogPath, cUnidade + " falha ao notificar telegram")
+            EndIf
+            MonSetStatus(oState, cUnidade, cStatusNovo)
+        EndIf
+    Catch e
+        MonLog(cLogPath, cUnidade + " erro_interno=" + e:description)
+    EndTry
+Return Nil

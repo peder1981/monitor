@@ -103,5 +103,34 @@ User Function MonitorLibTest()
         ConOut("teste23_telegram=" + IIF(MonNotificarTelegram(cTokenTeste, cChatTeste, "teste automatizado do monitor"), "SIM", "NAO"))
     EndIf
 
+    Local cIni2      := "test_units2.ini"
+    Local cLog2      := "test_monitor2.log"
+    Local oState2    := JsonObject():New()
+    Local cTokenFake := "TOKEN_INVALIDO_DE_PROPOSITO"
+    Local cChatFake  := "0"
+    Local cLogTxt
+
+    MemoWrite(cIni2, "[TCPX]" + Chr(13) + Chr(10) + ;
+                     "Server=127.0.0.1" + Chr(13) + Chr(10) + ;
+                     "Port=19193" + Chr(13) + Chr(10))
+    FErase(cLog2)
+
+    // 1ª passagem: unidade está down (nada escutando na 19193), estado
+    // anterior é DESCONHECIDO -> muda pra DOWN -> deve logar e tentar notificar.
+    MonProcessarUnidade("TCPX", cIni2, 500, oState2, cLog2, cTokenFake, cChatFake)
+    ConOut("teste24_status_apos_1a_passagem=" + MonGetStatusAnterior(oState2, "TCPX"))
+
+    // 2ª passagem: continua down, estado anterior já é DOWN -> não deve
+    // gerar uma segunda tentativa de notificação (não dá pra observar a
+    // notificação em si sem rede, mas o estado deve permanecer DOWN e
+    // o log deve ganhar uma linha nova mesmo sem alerta).
+    cLogTxt := MemoRead(cLog2)
+    MonProcessarUnidade("TCPX", cIni2, 500, oState2, cLog2, cTokenFake, cChatFake)
+    ConOut("teste25_status_apos_2a_passagem=" + MonGetStatusAnterior(oState2, "TCPX"))
+    ConOut("teste26_log_cresceu=" + IIF(Len(MemoRead(cLog2)) > Len(cLogTxt), "SIM", "NAO"))
+
+    FErase(cIni2)
+    FErase(cLog2)
+
     ConOut("MONITOR_LIB_TEST_FIM")
 Return
