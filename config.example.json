@@ -1,0 +1,10 @@
+{
+  "iniPath": "C:\\totvs\\appserver.ini",
+  "intervaloSegundos": 60,
+  "timeoutMs": 3000,
+  "telegramBotToken": "COLOQUE_O_TOKEN_DO_BOT_AQUI",
+  "telegramChatId": "COLOQUE_O_CHAT_ID_AQUI",
+  "unidades": ["TCPSP", "TCPRJ", "TCPMG", "TCPGO", "TCPMT", "TCPBA",
+               "TCPPE", "TCPCE", "TCPPR", "TCPPA", "TCPRS", "TCPAM",
+               "TCPFB", "TCPAF", "TCPOF"]
+}

@@ -41,3 +41,35 @@ Return Nil
 
 User Function MonSaveState(cStatePath, oState)
 Return MemoWrite(cStatePath, oState:ToJson())
+
+User Function MonLog(cLogPath, cTexto)
+    Local cLinha := DTOC(Date()) + " " + Time() + " - " + cTexto + Chr(13) + Chr(10)
+    Local nH := FOpen(cLogPath, 1)
+
+    If nH < 0
+        nH := FCreate(cLogPath)
+    EndIf
+    If nH >= 0
+        FSeek(nH, 0, 2)
+        FWrite(nH, cLinha)
+        FClose(nH)
+    EndIf
+Return Nil
+
+User Function MonLoadConfig(cConfigPath)
+    Local oConfig := JsonObject():New()
+    Local cTxt := MemoRead(cConfigPath)
+
+    If cTxt == ""
+        Return Nil
+    EndIf
+    If !oConfig:FromJson(cTxt)
+        Return Nil
+    EndIf
+Return oConfig
+
+User Function MonGetUnidades(oConfig)
+    If !oConfig:HasProperty("unidades")
+        Return {}
+    EndIf
+Return oConfig["unidades"]

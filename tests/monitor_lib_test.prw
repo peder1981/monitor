@@ -46,5 +46,35 @@ User Function MonitorLibTest()
     ConOut("teste8_status_outra_unidade=" + MonGetStatusAnterior(oState, "TCPRJ"))
 
     FErase(cStatePath)
+
+    Local cLogPath := "test_monitor.log"
+    Local cConfigPath := "test_config.json"
+    Local oConfig
+    Local aUnidades
+    Local cConteudoLog
+
+    FErase(cLogPath)
+    MonLog(cLogPath, "linha um")
+    MonLog(cLogPath, "linha dois")
+    cConteudoLog := MemoRead(cLogPath)
+    ConOut("teste9_log_tem_linha_um=" + IIF("linha um" $ cConteudoLog, "SIM", "NAO"))
+    ConOut("teste10_log_tem_linha_dois=" + IIF("linha dois" $ cConteudoLog, "SIM", "NAO"))
+    FErase(cLogPath)
+
+    MemoWrite(cConfigPath, '{"iniPath":"C:\\totvs\\appserver.ini","intervaloSegundos":60,' + ;
+                           '"timeoutMs":3000,"telegramBotToken":"TOKEN123",' + ;
+                           '"telegramChatId":"CHAT123","unidades":["TCPSP","TCPRJ"]}')
+    oConfig := MonLoadConfig(cConfigPath)
+    ConOut("teste11_inipath=" + oConfig["iniPath"])
+    ConOut("teste12_intervalo=" + Str(oConfig["intervaloSegundos"]))
+
+    aUnidades := MonGetUnidades(oConfig)
+    ConOut("teste13_qtd_unidades=" + Str(Len(aUnidades)))
+    ConOut("teste14_unidade1=" + aUnidades[1])
+    ConOut("teste15_unidade2=" + aUnidades[2])
+    FErase(cConfigPath)
+
+    ConOut("teste16_config_ausente=" + IIF(MonLoadConfig("nao_existe.json") == Nil, "SIM", "NAO"))
+
     ConOut("MONITOR_LIB_TEST_FIM")
 Return
