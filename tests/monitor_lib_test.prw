@@ -197,5 +197,50 @@ User Function MonitorLibTest()
     ConOut("teste34_unidades_nao_array_retorna_vazio=" + IIF(Len(aUnidades5) == 0, "SIM", "NAO"))
     FErase(cConfigPath5)
 
+    // teste35-36: MonPingServico -- checagem TCP direta (host/porta prontos,
+    // sem lookup em .ini), usada por dbaccess e license server.
+    Local oResServ
+
+    oResServ := MonPingServico("TESTE_SERVICO", "127.0.0.1", 19191, 1000)
+    ConOut("teste35_servico_unidade=" + oResServ["UNIDADE"])
+    ConOut("teste35_servico_up=" + IIF(oResServ["UP"], "SIM", "NAO"))
+
+    oResServ := MonPingServico("TESTE_SERVICO", "127.0.0.1", 19194, 500)
+    ConOut("teste36_servico_down=" + IIF(oResServ["UP"], "SIM", "NAO"))
+
+    // teste37-39: MonProcessarDbaccess -- reaproveita host do appserver da
+    // unidade, porta de dbaccess vem do config; chave de estado
+    // "<UNIDADE>_DBACCESS"; primeira passagem down nao notifica "voltou"
+    // (nao ha "voltou" na primeira vez), mas registra estado.
+    Local oState6 := JsonObject():New()
+    Local cLog6   := "test_monitor_dbaccess.log"
+
+    FErase(cLog6)
+    MonProcessarDbaccess("TCPSP", "127.0.0.1", 19195, 500, oState6, cLog6, "TOKEN_FAKE", "0")
+    ConOut("teste37_dbaccess_status=" + MonGetStatusAnterior(oState6, "TCPSP_DBACCESS"))
+
+    Local cLogTxt6 := MemoRead(cLog6)
+    ConOut("teste38_dbaccess_log_tem_rotulo=" + IIF("TCPSP_DBACCESS" $ cLogTxt6, "SIM", "NAO"))
+
+    // unidade "irma" (mesmo host, dbaccess up) nao deve mexer no estado da TCPSP
+    MonProcessarDbaccess("TCPRJ", "127.0.0.1", 19191, 500, oState6, cLog6, "TOKEN_FAKE", "0")
+    ConOut("teste39_dbaccess_unidades_independentes=" + MonGetStatusAnterior(oState6, "TCPRJ_DBACCESS") + "/" + MonGetStatusAnterior(oState6, "TCPSP_DBACCESS"))
+
+    FErase(cLog6)
+
+    // teste40-41: MonProcessarLicenseServer -- checado uma vez, chave de
+    // estado fixa "LICENSE_SERVER", independente de qualquer unidade.
+    Local oState7 := JsonObject():New()
+    Local cLog7   := "test_monitor_license.log"
+
+    FErase(cLog7)
+    MonProcessarLicenseServer("127.0.0.1", 19191, 500, oState7, cLog7, "TOKEN_FAKE", "0")
+    ConOut("teste40_license_status=" + MonGetStatusAnterior(oState7, "LICENSE_SERVER"))
+
+    Local cLogTxt7 := MemoRead(cLog7)
+    ConOut("teste41_license_log_tem_rotulo=" + IIF("LICENSE_SERVER" $ cLogTxt7, "SIM", "NAO"))
+
+    FErase(cLog7)
+
     ConOut("MONITOR_LIB_TEST_FIM")
 Return

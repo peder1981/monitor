@@ -52,7 +52,16 @@ User Function MonitorMain()
     While .T.
         For i := 1 To Len(aUnidades)
             MonProcessarUnidade(aUnidades[i], oConfig["iniPath"], oConfig["timeoutMs"], oState, cLogPath, oConfig["telegramBotToken"], oConfig["telegramChatId"])
+
+            If oConfig:HasProperty("portaDbaccess")
+                MonProcessarDbaccess(aUnidades[i], GetPvProfString(aUnidades[i], "Server", "", oConfig["iniPath"]), oConfig["portaDbaccess"], oConfig["timeoutMs"], oState, cLogPath, oConfig["telegramBotToken"], oConfig["telegramChatId"])
+            EndIf
         Next
+
+        If oConfig:HasProperty("licenseServer")
+            MonProcessarLicenseServer(oConfig["licenseServer"]["host"], oConfig["licenseServer"]["port"], oConfig["timeoutMs"], oState, cLogPath, oConfig["telegramBotToken"], oConfig["telegramChatId"])
+        EndIf
+
         MonSaveState(cStatePath, oState)
         Sleep(oConfig["intervaloSegundos"] * 1000)
     EndDo

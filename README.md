@@ -2,7 +2,10 @@
 
 Vigia o broker TCP (SmartClient) de cada unidade Protheus listada num
 `.ini` de conexão existente, e avisa no Telegram quando uma unidade cai
-ou volta.
+ou volta. Opcionalmente também vigia o dbaccess de cada unidade (mesmo
+host do appserver, porta configurável) e um license server centralizado
+(único para todo o ambiente) — ver `portaDbaccess`/`licenseServer` em
+"Configurar" abaixo.
 
 ## Compilar
 
@@ -40,14 +43,29 @@ e preencha:
   `TCPRJ`, ...).
 - `intervaloSegundos` / `timeoutMs`: frequência da checagem e timeout
   de cada tentativa de conexão TCP.
+- `portaDbaccess` (opcional): porta do dbaccess, igual pra todas as
+  unidades — o host usado é o mesmo host do appserver daquela unidade,
+  lido do `.ini`. Se essa chave não existir no `config.json`, o dbaccess
+  não é checado.
+- `licenseServer` (opcional): objeto `{"host": "...", "port": ...}` do
+  license server, único pra todo o ambiente (não é por unidade). Se essa
+  chave não existir, o license server não é checado.
+
+Alertas de dbaccess saem como `TCPSP dbaccess (host:porta) caiu/voltou`
+e de license server como `License Server (host:porta) caiu/voltou`; o
+estado de cada um fica guardado em `state.json` sob as chaves
+`<UNIDADE>_DBACCESS` e `LICENSE_SERVER`, respectivamente — não colidem
+com a chave da própria unidade (appserver).
 
 ## Rodar os testes
 
 `tests/monitor_lib_test.prw` cobre `src/monitor_lib.prw` (checagem TCP,
-estado, config, log, montagem de mensagem e o ciclo de
-`MonProcessarUnidade`). O `teste1` (unidade `TCPOK`) precisa de algo
-escutando em `127.0.0.1:19191` antes de rodar a suite — os demais testes
-usam portas que ninguém escuta de propósito, então não precisam de setup.
+estado, config, log, montagem de mensagem e os ciclos de
+`MonProcessarUnidade`/`MonProcessarDbaccess`/`MonProcessarLicenseServer`).
+Vários testes (`teste1`, `teste35`, `teste39`, `teste40`...) precisam de
+algo escutando em `127.0.0.1:19191` antes de rodar a suite — os demais
+testes usam portas que ninguém escuta de propósito, então não precisam
+de setup.
 
 1. Suba um listener descartável na porta 19191 (fica escutando até você
    matar o processo com Ctrl+C):

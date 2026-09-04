@@ -101,6 +101,63 @@ User Function MonNotificarTelegram(cToken, cChatId, cTexto)
     nStatus := FWHttpPost(cUrl, oBody:ToJson(), "application/json")
 Return (nStatus >= 200 .And. nStatus < 300)
 
+User Function MonPingServico(cChave, cHost, nPort, nTimeoutMs)
+    Local oRes := JsonObject():New()
+
+    oRes["UNIDADE"] := cChave
+    oRes["HOST"]    := cHost
+    oRes["PORT"]    := nPort
+    oRes["UP"]      := PING(cHost, nPort, nTimeoutMs)
+    oRes["ERRO"]    := ""
+Return oRes
+
+User Function MonProcessarResultado(cChave, cRotulo, oRes, oState, cLogPath, cToken, cChatId)
+    Local cStatusAnterior
+    Local cStatusNovo
+    Local cMsg
+
+    cStatusAnterior := MonGetStatusAnterior(oState, cChave)
+    cStatusNovo := IIF(oRes["UP"], "UP", "DOWN")
+
+    MonLog(cLogPath, cChave + " " + oRes["HOST"] + ":" + AllTrim(Str(oRes["PORT"])) + " status=" + cStatusNovo)
+
+    If cStatusNovo != cStatusAnterior
+        If cStatusAnterior != "DESCONHECIDO" .Or. cStatusNovo == "DOWN"
+            cMsg := MonMontarMensagem(cRotulo, oRes["HOST"], oRes["PORT"], cStatusNovo)
+            If !MonNotificarTelegram(cToken, cChatId, cMsg)
+                MonLog(cLogPath, cChave + " falha ao notificar telegram")
+            EndIf
+        EndIf
+        MonSetStatus(oState, cChave, cStatusNovo)
+    EndIf
+Return Nil
+
+User Function MonProcessarDbaccess(cUnidade, cHostAppserver, nPortaDbaccess, nTimeoutMs, oState, cLogPath, cToken, cChatId)
+    Local cChave := cUnidade + "_DBACCESS"
+    Local oRes
+    Local e
+
+    Try
+        oRes := MonPingServico(cChave, cHostAppserver, nPortaDbaccess, nTimeoutMs)
+        MonProcessarResultado(cChave, cUnidade + " dbaccess", oRes, oState, cLogPath, cToken, cChatId)
+    Catch e
+        MonLog(cLogPath, cChave + " erro_interno=" + e:description)
+    EndTry
+Return Nil
+
+User Function MonProcessarLicenseServer(cHost, nPort, nTimeoutMs, oState, cLogPath, cToken, cChatId)
+    Local cChave := "LICENSE_SERVER"
+    Local oRes
+    Local e
+
+    Try
+        oRes := MonPingServico(cChave, cHost, nPort, nTimeoutMs)
+        MonProcessarResultado(cChave, "License Server", oRes, oState, cLogPath, cToken, cChatId)
+    Catch e
+        MonLog(cLogPath, cChave + " erro_interno=" + e:description)
+    EndTry
+Return Nil
+
 User Function MonProcessarUnidade(cUnidade, cIniPath, nTimeoutMs, oState, cLogPath, cToken, cChatId)
     Local oRes
     Local cStatusAnterior

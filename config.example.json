@@ -6,5 +6,7 @@
   "telegramChatId": "COLOQUE_O_CHAT_ID_AQUI",
   "unidades": ["TCPSP", "TCPRJ", "TCPMG", "TCPGO", "TCPMT", "TCPBA",
                "TCPPE", "TCPCE", "TCPPR", "TCPPA", "TCPRS", "TCPAM",
-               "TCPFB", "TCPAF", "TCPOF"]
+               "TCPFB", "TCPAF", "TCPOF"],
+  "portaDbaccess": 1234,
+  "licenseServer": {"host": "10.0.200.98", "port": 5555}
 }
