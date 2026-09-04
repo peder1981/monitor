@@ -19,3 +19,25 @@ User Function MonCheckUnidade(cUnidade, cIniPath, nTimeoutMs)
     oRes["UP"]   := PING(cHost, nPort, nTimeoutMs)
     oRes["ERRO"] := ""
 Return oRes
+
+User Function MonLoadState(cStatePath)
+    Local oState := JsonObject():New()
+    Local cTxt   := MemoRead(cStatePath)
+
+    If cTxt != ""
+        oState:FromJson(cTxt)
+    EndIf
+Return oState
+
+User Function MonGetStatusAnterior(oState, cUnidade)
+    If !oState:HasProperty(cUnidade)
+        Return "DESCONHECIDO"
+    EndIf
+Return oState[cUnidade]
+
+User Function MonSetStatus(oState, cUnidade, cStatus)
+    oState[cUnidade] := cStatus
+Return Nil
+
+User Function MonSaveState(cStatePath, oState)
+Return MemoWrite(cStatePath, oState:ToJson())

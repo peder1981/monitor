@@ -28,5 +28,23 @@ User Function MonitorLibTest()
     ConOut("teste3_erro=" + oRes["ERRO"])
 
     FErase(cIniPath)
+
+    Local cStatePath := "test_state.json"
+    Local oState
+
+    FErase(cStatePath)
+    oState := MonLoadState(cStatePath)
+    ConOut("teste4_status_novo=" + MonGetStatusAnterior(oState, "TCPSP"))
+
+    MonSetStatus(oState, "TCPSP", "UP")
+    ConOut("teste5_status_apos_set=" + MonGetStatusAnterior(oState, "TCPSP"))
+
+    ConOut("teste6_save=" + IIF(MonSaveState(cStatePath, oState), "SIM", "NAO"))
+
+    oState := MonLoadState(cStatePath)
+    ConOut("teste7_status_apos_reload=" + MonGetStatusAnterior(oState, "TCPSP"))
+    ConOut("teste8_status_outra_unidade=" + MonGetStatusAnterior(oState, "TCPRJ"))
+
+    FErase(cStatePath)
     ConOut("MONITOR_LIB_TEST_FIM")
 Return
