@@ -132,5 +132,70 @@ User Function MonitorLibTest()
     FErase(cIni2)
     FErase(cLog2)
 
+    // teste27-30: unidade com secao ausente no .ini nao deve virar DOWN --
+    // MonProcessarUnidade deve logar "sem_dados" e sair sem tocar no estado
+    // nem tentar notificar (fixing finding 1 da revisao final).
+    Local cIni3     := "test_units3.ini"
+    Local cLog3     := "test_monitor3.log"
+    Local oState3   := JsonObject():New()
+    Local cLogTxt3
+
+    MemoWrite(cIni3, "[TCPOK]" + Chr(13) + Chr(10) + ;
+                     "Server=127.0.0.1" + Chr(13) + Chr(10) + ;
+                     "Port=19191" + Chr(13) + Chr(10))
+    FErase(cLog3)
+
+    MonProcessarUnidade("TCPGHOST", cIni3, 500, oState3, cLog3, cTokenFake, cChatFake)
+    ConOut("teste27_status_permanece_desconhecido=" + MonGetStatusAnterior(oState3, "TCPGHOST"))
+
+    cLogTxt3 := MemoRead(cLog3)
+    ConOut("teste28_log_tem_sem_dados=" + IIF("sem_dados" $ cLogTxt3, "SIM", "NAO"))
+    ConOut("teste29_log_tem_erro=" + IIF("secao_nao_encontrada_no_ini" $ cLogTxt3, "SIM", "NAO"))
+    ConOut("teste30_nao_tentou_notificar=" + IIF("falha ao notificar telegram" $ cLogTxt3, "NAO", "SIM"))
+
+    FErase(cIni3)
+    FErase(cLog3)
+
+    // teste31-33: primeira passagem com unidade ja saudavel (DESCONHECIDO ->
+    // UP) nao deve disparar o "[OK] ... voltou" espurio (fixing finding 6),
+    // mas deve gravar o estado normalmente. Como nao da pra observar a rede
+    // diretamente, usamos o mesmo truque de teste24-26: com token invalido,
+    // se a notificacao fosse tentada o log ganharia a linha de falha.
+    Local cIni4   := "test_units4.ini"
+    Local cLog4   := "test_monitor4.log"
+    Local oState4 := JsonObject():New()
+    Local cLogTxt4
+
+    MemoWrite(cIni4, "[TCPUP]" + Chr(13) + Chr(10) + ;
+                     "Server=127.0.0.1" + Chr(13) + Chr(10) + ;
+                     "Port=19191" + Chr(13) + Chr(10))
+    FErase(cLog4)
+
+    MonProcessarUnidade("TCPUP", cIni4, 500, oState4, cLog4, cTokenFake, cChatFake)
+    ConOut("teste31_status_apos_1a_passagem=" + MonGetStatusAnterior(oState4, "TCPUP"))
+
+    cLogTxt4 := MemoRead(cLog4)
+    ConOut("teste32_nao_tentou_notificar_ok_desconhecido=" + IIF("falha ao notificar telegram" $ cLogTxt4, "NAO", "SIM"))
+
+    // 2a passagem: continua UP, nada muda -> tambem sem notificacao.
+    MonProcessarUnidade("TCPUP", cIni4, 500, oState4, cLog4, cTokenFake, cChatFake)
+    ConOut("teste33_status_apos_2a_passagem=" + MonGetStatusAnterior(oState4, "TCPUP"))
+
+    FErase(cIni4)
+    FErase(cLog4)
+
+    // teste34: MonGetUnidades deve ignorar "unidades" quando nao for array
+    // (ex: erro de digitacao no config.json colocando uma string solta),
+    // retornando lista vazia em vez de corromper o loop chamador (finding 10).
+    Local cConfigPath5 := "test_config_unidades_string.json"
+    Local oConfig5
+    Local aUnidades5
+
+    MemoWrite(cConfigPath5, '{"iniPath":"C:\\totvs\\appserver.ini","intervaloSegundos":60,"unidades":"TCPSP"}')
+    oConfig5  := MonLoadConfig(cConfigPath5)
+    aUnidades5 := MonGetUnidades(oConfig5)
+    ConOut("teste34_unidades_nao_array_retorna_vazio=" + IIF(Len(aUnidades5) == 0, "SIM", "NAO"))
+    FErase(cConfigPath5)
+
     ConOut("MONITOR_LIB_TEST_FIM")
 Return

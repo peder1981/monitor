@@ -25,7 +25,10 @@ User Function MonLoadState(cStatePath)
     Local cTxt   := MemoRead(cStatePath)
 
     If cTxt != ""
-        oState:FromJson(cTxt)
+        If !oState:FromJson(cTxt)
+            ConOut("AVISO: state.json corrompido, ignorando e comecando do zero")
+            oState := JsonObject():New()
+        EndIf
     EndIf
 Return oState
 
@@ -72,6 +75,9 @@ User Function MonGetUnidades(oConfig)
     If !oConfig:HasProperty("unidades")
         Return {}
     EndIf
+    If ValType(oConfig["unidades"]) != "A"
+        Return {}
+    EndIf
 Return oConfig["unidades"]
 
 User Function MonMontarMensagem(cUnidade, cHost, nPort, cStatusNovo)
@@ -104,15 +110,26 @@ User Function MonProcessarUnidade(cUnidade, cIniPath, nTimeoutMs, oState, cLogPa
 
     Try
         oRes := MonCheckUnidade(cUnidade, cIniPath, nTimeoutMs)
+
+        If oRes["ERRO"] != ""
+            MonLog(cLogPath, cUnidade + " sem_dados erro=" + oRes["ERRO"])
+            Return Nil
+        EndIf
+
         cStatusAnterior := MonGetStatusAnterior(oState, cUnidade)
         cStatusNovo := IIF(oRes["UP"], "UP", "DOWN")
 
         MonLog(cLogPath, cUnidade + " " + oRes["HOST"] + ":" + AllTrim(Str(oRes["PORT"])) + " status=" + cStatusNovo)
 
         If cStatusNovo != cStatusAnterior
-            cMsg := MonMontarMensagem(cUnidade, oRes["HOST"], oRes["PORT"], cStatusNovo)
-            If !MonNotificarTelegram(cToken, cChatId, cMsg)
-                MonLog(cLogPath, cUnidade + " falha ao notificar telegram")
+            // Não notifica "[OK] ... voltou" na primeira execução (não havia
+            // estado anterior pra "voltar" de); mas transição pra DOWN sempre
+            // notifica, mesmo vindo de DESCONHECIDO (unidade já nasce caída).
+            If cStatusAnterior != "DESCONHECIDO" .Or. cStatusNovo == "DOWN"
+                cMsg := MonMontarMensagem(cUnidade, oRes["HOST"], oRes["PORT"], cStatusNovo)
+                If !MonNotificarTelegram(cToken, cChatId, cMsg)
+                    MonLog(cLogPath, cUnidade + " falha ao notificar telegram")
+                EndIf
             EndIf
             MonSetStatus(oState, cUnidade, cStatusNovo)
         EndIf

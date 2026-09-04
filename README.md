@@ -41,6 +41,38 @@ e preencha:
 - `intervaloSegundos` / `timeoutMs`: frequência da checagem e timeout
   de cada tentativa de conexão TCP.
 
+## Rodar os testes
+
+`tests/monitor_lib_test.prw` cobre `src/monitor_lib.prw` (checagem TCP,
+estado, config, log, montagem de mensagem e o ciclo de
+`MonProcessarUnidade`). O `teste1` (unidade `TCPOK`) precisa de algo
+escutando em `127.0.0.1:19191` antes de rodar a suite — os demais testes
+usam portas que ninguém escuta de propósito, então não precisam de setup.
+
+1. Suba um listener descartável na porta 19191 (fica escutando até você
+   matar o processo com Ctrl+C):
+
+       python3 -c "
+       import socket
+       s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+       s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+       s.bind(('127.0.0.1', 19191))
+       s.listen(5)
+       while True:
+           conn, addr = s.accept()
+           conn.close()
+       "
+
+2. Em outro terminal, rode a suite (ajuste o caminho do `advplc` pra onde
+   ele estiver instalado):
+
+       cd tests && /caminho/para/advplc run monitor_lib_test.prw
+
+3. A última linha da saída deve ser `MONITOR_LIB_TEST_FIM`, sem nenhuma
+   linha de erro do compilador/interpretador acima dela. Cada asserção
+   individual aparece como `testeN_descricao=SIM|NAO` (ou o valor
+   esperado) — releia a saída se algo não bater.
+
 ## Rodar
 
     monitor.exe
