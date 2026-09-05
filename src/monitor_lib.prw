@@ -115,12 +115,16 @@ Return (nStatus >= 200 .And. nStatus < 300)
 
 User Function MonPingServico(cChave, cHost, nPort, nTimeoutMs)
     Local oRes := JsonObject():New()
+    Local nT1
 
     oRes["UNIDADE"] := cChave
     oRes["HOST"]    := cHost
     oRes["PORT"]    := nPort
-    oRes["UP"]      := PING(cHost, nPort, nTimeoutMs)
-    oRes["ERRO"]    := ""
+
+    nT1 := TimeCounter()
+    oRes["UP"]         := PING(cHost, nPort, nTimeoutMs)
+    oRes["LATENCIAMS"] := TimeCounter() - nT1
+    oRes["ERRO"]       := ""
 Return oRes
 
 User Function MonProcessarResultado(cChave, cRotulo, oRes, oState, cLogPath, cToken, cChatId)

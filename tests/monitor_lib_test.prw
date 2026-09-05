@@ -164,6 +164,17 @@ User Function MonitorLibTest()
 
     FErase(cLog7)
 
+    Local oState8 := JsonObject():New()
+    Local cLog8   := "test_monitor_latencia.log"
+
+    FErase(cLog8)
+    MonProcessarDbaccess("TCPLAT", "127.0.0.1", 19191, 500, oState8, cLog8, "TOKEN_FAKE", "0")
+    ConOut("testeLatDbaccess_registrada=" + IIF(MonGetLatenciaAnterior(oState8, "TCPLAT_DBACCESS") >= 0, "SIM", "NAO"))
+
+    MonProcessarLicenseServer("127.0.0.1", 19191, 500, oState8, cLog8, "TOKEN_FAKE", "0")
+    ConOut("testeLatLicense_registrada=" + IIF(MonGetLatenciaAnterior(oState8, "LICENSE_SERVER") >= 0, "SIM", "NAO"))
+    FErase(cLog8)
+
     // MonProcessarUnidade (webapp/HTTP): unidade sem listener na porta
     // configurada -> DOWN, loga, tenta notificar (com token invalido, so
     // confirma que tentou pela linha de falha no log).
