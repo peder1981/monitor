@@ -15,6 +15,27 @@ o status/latência de cada unidade e permite iniciar/parar o serviço e
 ver o log — os dois são executáveis separados, o painel não substitui
 o serviço.
 
+## Painel (`MonitorTUI.exe`)
+
+Capturas reais do painel rodando contra um ambiente Protheus de verdade
+(appserver, dbaccess e license server em containers Docker) — sem
+mockup, é a saída de tela de fato:
+
+**Todos os serviços no ar:**
+
+![Painel com todos os serviços UP](docs/screenshots/tui-status-up.png)
+
+**Uma queda real detectada** (o container do dbaccess foi parado
+propositalmente pra este teste — o appserver e o license server
+continuam corretamente isolados, ainda UP):
+
+![Painel detectando o dbaccess DOWN](docs/screenshots/tui-status-down.png)
+
+**Tela de log** (opção `[3]`), mostrando o histórico de checagens e a
+tentativa de notificação no momento exato da queda:
+
+![Tela de log do painel](docs/screenshots/tui-log-view.png)
+
 ## Instalar
 
 1. Baixe o zip mais recente da aba Releases deste repositório
