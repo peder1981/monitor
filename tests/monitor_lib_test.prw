@@ -40,6 +40,14 @@ User Function MonitorLibTest()
     ConOut("teste7_status_apos_reload=" + MonGetStatusAnterior(oState, "TCPSP"))
     ConOut("teste8_status_outra_unidade=" + MonGetStatusAnterior(oState, "TCPRJ"))
 
+    MonSetStatus(oState, "TCPSP", "UP", 842)
+    ConOut("testeLatencia1_valor=" + Str(MonGetLatenciaAnterior(oState, "TCPSP")))
+
+    MonSaveState(cStatePath, oState)
+    oState := MonLoadState(cStatePath)
+    ConOut("testeLatencia2_valor_apos_reload=" + Str(MonGetLatenciaAnterior(oState, "TCPSP")))
+    ConOut("testeLatencia3_unidade_sem_latencia=" + Str(MonGetLatenciaAnterior(oState, "TCPRJ")))
+
     FErase(cStatePath)
 
     Local cLogPath := "test_monitor.log"

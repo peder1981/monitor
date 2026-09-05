@@ -43,9 +43,16 @@ User Function MonGetStatusAnterior(oState, cUnidade)
     EndIf
 Return oState[cUnidade]
 
-User Function MonSetStatus(oState, cUnidade, cStatus)
+User Function MonSetStatus(oState, cUnidade, cStatus, nLatenciaMs)
     oState[cUnidade] := cStatus
+    oState[cUnidade + "_LATENCIA"] := nLatenciaMs
 Return Nil
+
+User Function MonGetLatenciaAnterior(oState, cChave)
+    If !oState:HasProperty(cChave + "_LATENCIA")
+        Return -1
+    EndIf
+Return oState[cChave + "_LATENCIA"]
 
 User Function MonSaveState(cStatePath, oState)
 Return MemoWrite(cStatePath, oState:ToJson())
