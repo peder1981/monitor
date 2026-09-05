@@ -38,15 +38,22 @@ tentativa de notificação no momento exato da queda:
 
 ## Instalar
 
-1. Baixe o zip mais recente da aba Releases deste repositório
-   (`monitor-windows-amd64`) — contém `MonitorService.exe`,
-   `MonitorTUI.exe`, `config.example.json` e `abrir-painel.bat`, todos
-   já compilados. Nenhum toolchain (MinGW, Go, AdvPP) precisa ser
-   instalado na máquina Windows que vai rodar o monitor.
-2. Copie os quatro arquivos pra uma pasta fixa (ex:
-   `C:\MonitorProtheus\`).
-3. Copie `config.example.json` para `config.json` na mesma pasta e
-   preencha (ver "Configurar" abaixo).
+**Windows**: baixe `Monitor-Setup-x.y.z.exe` da aba Releases e rode —
+instala em `Program Files\MonitorProtheus`, cria atalho no Menu Iniciar
+apontando pro painel. Alternativa sem instalador: baixe
+`monitor-windows-amd64.zip`, extraia numa pasta de sua escolha.
+
+**Linux/macOS**: rode
+
+    curl -fsSL https://raw.githubusercontent.com/peder1981/monitor/master/install.sh | sh
+
+Instala em `~/.local/bin` (sem precisar de root). Pra escolher outro
+diretório: `MONITOR_INSTALL_DIR=/outro/caminho curl -fsSL ... | sh`.
+Alternativa sem o script: baixe `monitor-linux-amd64.tar.gz` ou
+`monitor-darwin-arm64.tar.gz` da aba Releases e extraia manualmente.
+
+Nenhuma das três plataformas precisa instalar toolchain nenhum (MinGW,
+Go, AdvPP) — os binários já saem compilados da CI.
 
 ## Configurar
 
@@ -134,7 +141,10 @@ não precisa do listener.
   do Windows como "ao iniciar o sistema", com "Start in" apontando pra
   essa mesma pasta (os arquivos `config.json`/`state.json`/
   `monitor.log` são caminhos relativos). Sobrevive a reboot e a troca
-  de sessão RDP.
+  de sessão RDP. Em Linux/macOS, deixar o `MonitorService` sempre
+  ligado no boot (via `systemd`/`launchd`/`cron @reboot`) fica por
+  sua conta nesta versão — não temos um facilitador pra isso ainda,
+  só pro Windows (Task Scheduler).
 - **Painel de controle**: sempre abra **`abrir-painel.bat`**, nunca
   `MonitorTUI.exe` diretamente — o `.bat` garante que a interface abre
   dentro de um console de texto; aberto direto (duplo-clique), o
