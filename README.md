@@ -59,6 +59,11 @@ Copie `config.example.json` para `config.json` na mesma pasta do
   `TCPRJ`, ...).
 - `intervaloSegundos` / `timeoutMs`: frequência da checagem e timeout
   de cada tentativa de conexão TCP.
+- `portaWebapp`: porta HTTP fixa (ex: `8090`) usada pra checar o appserver
+  de cada unidade — o host continua vindo do `.ini` (`Server=` da seção),
+  só a porta muda de "a porta do `.ini`" pra essa, fixa. A checagem faz um
+  `GET` simples e mede quanto tempo demorou pra responder; qualquer status
+  HTTP abaixo de 500 conta como "no ar".
 - `portaDbaccess` (opcional): porta do dbaccess, igual pra todas as
   unidades — o host usado é o mesmo host do appserver daquela unidade,
   lido do `.ini`. Se essa chave não existir no `config.json`, o dbaccess

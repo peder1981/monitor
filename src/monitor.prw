@@ -45,13 +45,24 @@ User Function MonitorMain()
         Return
     EndIf
 
+    If !oConfig:HasProperty("portaWebapp")
+        ConOut("ERRO FATAL: config.json sem 'portaWebapp' valido (> 0)")
+        MonLog(cLogPath, "ERRO FATAL: config.json sem 'portaWebapp' valido (> 0)")
+        Return
+    EndIf
+    If oConfig["portaWebapp"] <= 0
+        ConOut("ERRO FATAL: config.json sem 'portaWebapp' valido (> 0)")
+        MonLog(cLogPath, "ERRO FATAL: config.json sem 'portaWebapp' valido (> 0)")
+        Return
+    EndIf
+
     oState := MonLoadState(cStatePath)
 
     ConOut("Monitor iniciado. " + AllTrim(Str(Len(aUnidades))) + " unidade(s), intervalo de " + AllTrim(Str(oConfig["intervaloSegundos"])) + "s.")
 
     While .T.
         For i := 1 To Len(aUnidades)
-            MonProcessarUnidade(aUnidades[i], oConfig["iniPath"], oConfig["timeoutMs"], oState, cLogPath, oConfig["telegramBotToken"], oConfig["telegramChatId"])
+            MonProcessarUnidade(aUnidades[i], oConfig["iniPath"], oConfig["portaWebapp"], oConfig["timeoutMs"], oState, cLogPath, oConfig["telegramBotToken"], oConfig["telegramChatId"])
 
             If oConfig:HasProperty("portaDbaccess")
                 MonProcessarDbaccess(aUnidades[i], GetPvProfString(aUnidades[i], "Server", "", oConfig["iniPath"]), oConfig["portaDbaccess"], oConfig["timeoutMs"], oState, cLogPath, oConfig["telegramBotToken"], oConfig["telegramChatId"])
