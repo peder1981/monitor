@@ -146,3 +146,7 @@ não precisa do listener.
   `config.json` continua sendo editado à mão, com um editor de texto
   qualquer, fora do painel (essa é uma lacuna conhecida, não uma
   omissão de documentação).
+
+## Licença
+
+[Apache License 2.0](LICENSE).
