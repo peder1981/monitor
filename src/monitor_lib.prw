@@ -1,22 +1,27 @@
-// Monitor library - TCP/IP and unit checking
+// Monitor library - checagem HTTP/TCP e controle de estado
 
-User Function MonCheckUnidade(cUnidade, cIniPath, nTimeoutMs)
-    Local oRes    := JsonObject():New()
-    Local cHost   := GetPvProfString(cUnidade, "Server", "", cIniPath)
-    Local cPortas := GetPvProfString(cUnidade, "Port", "", cIniPath)
-    Local nPort   := Val(cPortas)
+User Function MonCheckWebapp(cUnidade, cIniPath, nPortaWebapp, nTimeoutMs)
+    Local oRes  := JsonObject():New()
+    Local cHost := GetPvProfString(cUnidade, "Server", "", cIniPath)
+    Local nT1
+    Local nStatus
 
     oRes["UNIDADE"] := cUnidade
     oRes["HOST"]    := cHost
-    oRes["PORT"]    := nPort
+    oRes["PORT"]    := nPortaWebapp
 
-    If cHost == "" .Or. cPortas == ""
-        oRes["UP"]   := .F.
-        oRes["ERRO"] := "secao_nao_encontrada_no_ini"
+    If cHost == ""
+        oRes["UP"]         := .F.
+        oRes["ERRO"]       := "secao_nao_encontrada_no_ini"
+        oRes["LATENCIAMS"] := 0
         Return oRes
     EndIf
 
-    oRes["UP"]   := PING(cHost, nPort, nTimeoutMs)
+    FWHttpTimeout(nTimeoutMs / 1000)
+    nT1 := TimeCounter()
+    nStatus := FWHttpGet("http://" + cHost + ":" + AllTrim(Str(nPortaWebapp)) + "/")
+    oRes["LATENCIAMS"] := TimeCounter() - nT1
+    oRes["UP"]   := (nStatus > 0 .And. nStatus < 500)
     oRes["ERRO"] := ""
 Return oRes
 
@@ -166,7 +171,7 @@ User Function MonProcessarUnidade(cUnidade, cIniPath, nTimeoutMs, oState, cLogPa
     Local e
 
     Try
-        oRes := MonCheckUnidade(cUnidade, cIniPath, nTimeoutMs)
+        oRes := MonCheckWebapp(cUnidade, cIniPath, 19191, nTimeoutMs)
 
         If oRes["ERRO"] != ""
             MonLog(cLogPath, cUnidade + " sem_dados erro=" + oRes["ERRO"])
