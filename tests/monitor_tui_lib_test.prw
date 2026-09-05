@@ -58,5 +58,31 @@ User Function MonitorTuiLibTest()
     ConOut("teste9_detecta_parado=" + IIF(MonTuiProcessoEstaRodando(cSaidaSemProcesso), "SIM", "NAO"))
     ConOut("teste10_detecta_vazio=" + IIF(MonTuiProcessoEstaRodando(""), "SIM", "NAO"))
 
+    // testeUnix1-4: controle de processo no caminho nao-Windows (roda de
+    // verdade neste ambiente de dev/CI Linux). "MonitorService" tem 14
+    // caracteres -- cabe no limite de 15 do "comm" do Linux pro `pgrep -x`
+    // funcionar sem avisar de truncamento. Sobe um script de vida curta
+    // (sleep 5) com esse nome, no lugar do binario real, so pra validar
+    // o fluxo iniciar/verificar/parar/verificar.
+    Local cSO := GetSrvInfo()[2]
+    ConOut("testeUnix1_so_nao_eh_vazio=" + IIF(cSO != "", "SIM", "NAO"))
+
+    If cSO != "Windows"
+        Local lChmodOk
+
+        MemoWrite("MonitorService", "#!/bin/sh" + Chr(10) + "sleep 5" + Chr(10))
+        lChmodOk := Chmod("MonitorService", 493) // 0755 em decimal
+        ConOut("testeUnix2_chmod_ok=" + IIF(lChmodOk, "SIM", "NAO"))
+
+        MonTuiIniciarServico("MonitorService")
+        ConOut("testeUnix3_rodando_apos_iniciar=" + IIF(MonTuiVerificarServicoRodando(), "SIM", "NAO"))
+
+        MonTuiPararServico()
+        Sleep(500)
+        ConOut("testeUnix4_rodando_apos_parar=" + IIF(MonTuiVerificarServicoRodando(), "SIM", "NAO"))
+
+        FErase("MonitorService")
+    EndIf
+
     ConOut("MONITOR_TUI_LIB_TEST_FIM")
 Return

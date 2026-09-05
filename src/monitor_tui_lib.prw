@@ -32,25 +32,30 @@ User Function MonTuiVerificarServicoRodando()
     Local cSaida := ""
     Local bAcumula := {|cLinha| cSaida += cLinha + Chr(10)}
 
-    ProcRun("tasklist", {"/FI", "IMAGENAME eq MonitorService.exe", "/FO", "CSV", "/NH"}, bAcumula)
-Return MonTuiProcessoEstaRodando(cSaida)
+    If GetSrvInfo()[2] == "Windows"
+        ProcRun("tasklist", {"/FI", "IMAGENAME eq MonitorService.exe", "/FO", "CSV", "/NH"}, bAcumula)
+        Return MonTuiProcessoEstaRodando(cSaida)
+    EndIf
 
-// NOTA (achado 10 da revisao final): WaitRun() deste interpretador faz
-// strings.Fields(cmdStr) antes de invocar o SO -- um split ingenuo por
-// qualquer espaco em branco, sem nenhuma nocao de aspas. Envolver
-// cCaminhoExe em aspas (aspas + start ["" "caminho"]) NAO resolve um
-// caminho com espaco: o split ocorre ANTES de qualquer interpretacao de
-// aspas, entao 'C:\Program Files\x.exe' vira dois tokens quebrados
-// mesmo entre aspas. Nao ha correcao limpa usando WaitRun com uma unica
-// string quando o caminho pode conter espaco; a alternativa correta
-// seria expor um ProcRun/WaitRun que aceite argv como array (como o
-// ProcRun ja usado em MonTuiVerificarServicoRodando) em vez de uma
-// linha de comando unica. Deixado como esta -- ver achado 10 no
-// relatorio de revisao final.
-User Function MonTuiIniciarServico(cCaminhoExe)
-    WaitRun("cmd /c start " + cCaminhoExe)
+    ProcRun("pgrep", {"-x", "MonitorService"}, bAcumula)
+Return Len(AllTrim(cSaida)) > 0
+
+User Function MonTuiIniciarServico(cNomeBase)
+    Local bNoop := {|cLinha| Nil}
+
+    If GetSrvInfo()[2] == "Windows"
+        WaitRun("cmd /c start " + cNomeBase + ".exe")
+    Else
+        ProcRun("sh", {"-c", "./" + cNomeBase + " > /dev/null 2>&1 & echo lancado"}, bNoop)
+    EndIf
 Return Nil
 
 User Function MonTuiPararServico()
-    WaitRun("taskkill /IM MonitorService.exe /F")
+    Local bNoop := {|cLinha| Nil}
+
+    If GetSrvInfo()[2] == "Windows"
+        WaitRun("taskkill /IM MonitorService.exe /F")
+    Else
+        ProcRun("pkill", {"-x", "MonitorService"}, bNoop)
+    EndIf
 Return Nil

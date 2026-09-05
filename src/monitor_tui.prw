@@ -31,7 +31,7 @@ User Function MonitorTuiMain()
 
         Do Case
         Case nOpcao == 1
-            MonTuiIniciarServico("MonitorService.exe")
+            MonTuiIniciarServico("MonitorService")
         Case nOpcao == 2
             MonTuiPararServico()
         Case nOpcao == 3
