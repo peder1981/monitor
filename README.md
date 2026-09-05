@@ -7,49 +7,22 @@ host do appserver, porta configurável) e um license server centralizado
 (único para todo o ambiente) — ver `portaDbaccess`/`licenseServer` em
 "Configurar" abaixo.
 
-## Instalar (sem compilar nada)
+## Instalar
 
-Este monitor **não precisa ser compilado**. Ele roda interpretado, direto
-do `.prw`, pelo `advplc.exe` já pronto:
-
-1. Baixe o `advplc.exe` em https://github.com/peder1981/AdvPP/releases
-   (zip do Windows) — esse binário já vem com tudo que ele precisa
-   embutido, não exige instalar nada mais na máquina.
-2. Copie pra uma pasta na máquina Windows: `advplc.exe`,
-   `src/monitor.prw`, `src/monitor_lib.prw` e o seu `config.json`
-   (ver "Configurar" abaixo) — os quatro arquivos juntos, na mesma pasta.
-3. Rode com `advplc.exe run monitor.prw` (ver "Rodar" abaixo).
-
-**Por que não gerar um `monitor.exe` compilado:** `advplc build` sempre
-linka a biblioteca de UI Fyne, mesmo pra um programa 100% console como
-este, e Fyne exige cgo (compilador C) pra linkar — em qualquer
-plataforma, Windows incluído. Na prática isso significa que
-`advplc build` (rodando cross-compile do Linux, ou nativo já na própria
-máquina Windows) pede um toolchain C (MinGW-w64/TDM-GCC no Windows) que
-normalmente não está instalado, e falha sem gerar o executável. Isso já
-foi testado dos dois jeitos:
-
-- Cross-compile do Linux (`GOOS=windows GOARCH=amd64 ./advplc build ...`):
-  falha com `imports github.com/go-gl/gl/v2.1/gl: build constraints
-  exclude all Go files in .../go-gl@.../v2.1/gl` — não é o `GOOS`/`GOARCH`
-  não ser respeitado, é falta de toolchain OpenGL/cgo do SO alvo.
-- Nativo, direto na máquina Windows (`advplc.exe build ...`): pede pra
-  instalar MinGW/gcc pelo mesmo motivo (cgo é exigido em qualquer SO,
-  não só em cross-compile).
-
-Rodar via `advplc.exe run monitor.prw` evita isso por completo: o
-`advplc.exe` distribuído nas Releases já foi compilado (com Fyne e cgo)
-uma única vez, pelos mantenedores do AdvPP — a máquina que só *roda* o
-monitor nunca precisa de compilador nenhum. Se um dia você realmente
-precisar de um `.exe` próprio (ex: renomear o processo, esconder que é
-AdvPL), instale o MinGW-w64 na máquina Windows e repita o comando
-`advplc.exe build src\monitor.prw -o monitor.exe` — mas isso é opcional,
-não é o caminho recomendado.
+1. Baixe o zip mais recente da aba Releases deste repositório
+   (`monitor-windows-amd64`) — contém `MonitorService.exe`,
+   `MonitorTUI.exe`, `config.example.json` e `abrir-painel.bat`, todos
+   já compilados. Nenhum toolchain (MinGW, Go, AdvPP) precisa ser
+   instalado na máquina Windows que vai rodar o monitor.
+2. Copie os quatro arquivos pra uma pasta fixa (ex:
+   `C:\MonitorProtheus\`).
+3. Copie `config.example.json` para `config.json` na mesma pasta e
+   preencha (ver "Configurar" abaixo).
 
 ## Configurar
 
-Copie `config.example.json` para `config.json` na mesma pasta do
-`advplc.exe`/`monitor.prw` e preencha:
+Copie `config.example.json` para `config.json` na mesma pasta dos executáveis
+e preencha:
 
 - `iniPath`: caminho completo do `.ini` de conexão do SmartClient na
   máquina Windows (ex: `C:\\totvs\\appserver.ini`).
@@ -114,14 +87,15 @@ de setup.
 
 ## Rodar
 
-    advplc.exe run monitor.prw
-
-Fica em loop pra sempre, gerando `monitor.log` (toda checagem) e
-`state.json` (último status conhecido de cada unidade) na mesma pasta.
-Agende no Task Scheduler do Windows como "ao iniciar o sistema", sem
-precisar de serviço Windows — o `Sleep` interno já mantém o processo
-vivo. **Importante**: configure "Start in" (diretório de trabalho) da
-tarefa agendada pra essa mesma pasta — `config.json`/`state.json`/
-`monitor.log` são caminhos relativos, e o Task Scheduler por padrão
-inicia em `%windir%\system32`, onde o monitor não vai achar nada e sai
-sem avisar em lugar nenhum visível.
+- **Serviço de fundo**: agende `MonitorService.exe` no Task Scheduler
+  do Windows como "ao iniciar o sistema", com "Start in" apontando pra
+  essa mesma pasta (os arquivos `config.json`/`state.json`/
+  `monitor.log` são caminhos relativos). Sobrevive a reboot e a troca
+  de sessão RDP.
+- **Painel de controle**: sempre abra **`abrir-painel.bat`**, nunca
+  `MonitorTUI.exe` diretamente — o `.bat` garante que a interface abre
+  dentro de um console de texto; aberto direto (duplo-clique), o
+  interpretador entende que deve abrir uma janela gráfica em vez do
+  painel ASCII. Do painel dá pra ver o status/latência de cada
+  unidade, iniciar/parar o `MonitorService`, e ver as últimas linhas
+  do log — tudo com teclado, sem precisar saber nenhum comando.

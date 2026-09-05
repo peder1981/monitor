@@ -1,0 +1,78 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+env:
+  GO_VERSION: "1.24"
+
+jobs:
+  # O advplc build embute Fyne no stub (mesmo para um programa TUI como
+  # este) e precisa de CGO pra linkar -- so compilamos no windows-latest,
+  # que ja vem com o toolchain necessario (confirmado: o workflow do
+  # GesCon nao instala nenhum compilador C extra pra Windows, so pra
+  # Linux). E o unico alvo que este projeto precisa mesmo.
+  build:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout monitor
+        uses: actions/checkout@v4
+        with:
+          path: monitor
+
+      - name: Le a versao do AdvPP
+        id: advpp
+        shell: bash
+        run: echo "versao=v$(tr -d ' \n\r' < monitor/ADVPP_VERSION)" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout AdvPP (compilador)
+        uses: actions/checkout@v4
+        with:
+          repository: peder1981/AdvPP
+          ref: ${{ steps.advpp.outputs.versao }}
+          path: AdvPP
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: Build advplc
+        shell: bash
+        run: |
+          cd AdvPP
+          go build -o "$RUNNER_TEMP/advplc.exe" ./cmd/advplc
+
+      - name: Build MonitorService.exe e MonitorTUI.exe
+        shell: bash
+        env:
+          ADVPP_SRC: ${{ github.workspace }}/AdvPP
+        run: |
+          cd monitor
+          "$RUNNER_TEMP/advplc.exe" build src/monitor.prw -o MonitorService.exe
+          "$RUNNER_TEMP/advplc.exe" build src/monitor_tui.prw -o MonitorTUI.exe
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: monitor-windows-amd64
+          path: |
+            monitor/MonitorService.exe
+            monitor/MonitorTUI.exe
+            monitor/config.example.json
+            monitor/abrir-painel.bat
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artefatos
+      - name: Publica os binarios no release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: artefatos/**/*
+          generate_release_notes: true
