@@ -23,3 +23,21 @@ User Function MonTuiMontarTabela(oConfig, oState)
         cCorpo += MonTuiLinhaStatus("LICENSE_SERVER", MonGetStatusAnterior(oState, "LICENSE_SERVER"), MonGetLatenciaAnterior(oState, "LICENSE_SERVER")) + Chr(10)
     EndIf
 Return cCorpo
+
+User Function MonTuiProcessoEstaRodando(cSaidaTasklist)
+Return "MonitorService.exe" $ cSaidaTasklist
+
+User Function MonTuiVerificarServicoRodando()
+    Local cSaida := ""
+    Local bAcumula := {|cLinha| cSaida += cLinha + Chr(10)}
+
+    ProcRun("tasklist", {"/FI", "IMAGENAME eq MonitorService.exe", "/FO", "CSV", "/NH"}, bAcumula)
+Return MonTuiProcessoEstaRodando(cSaida)
+
+User Function MonTuiIniciarServico(cCaminhoExe)
+    WaitRun("cmd /c start " + cCaminhoExe)
+Return Nil
+
+User Function MonTuiPararServico()
+    WaitRun("taskkill /IM MonitorService.exe /F")
+Return Nil
