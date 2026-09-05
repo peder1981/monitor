@@ -131,7 +131,7 @@ User Function MonProcessarResultado(cChave, cRotulo, oRes, oState, cLogPath, cTo
     cStatusAnterior := MonGetStatusAnterior(oState, cChave)
     cStatusNovo := IIF(oRes["UP"], "UP", "DOWN")
 
-    MonLog(cLogPath, cChave + " " + oRes["HOST"] + ":" + AllTrim(Str(oRes["PORT"])) + " status=" + cStatusNovo)
+    MonLog(cLogPath, cChave + " " + oRes["HOST"] + ":" + AllTrim(Str(oRes["PORT"])) + " status=" + cStatusNovo + " latenciaMs=" + AllTrim(Str(oRes["LATENCIAMS"])))
 
     If cStatusNovo != cStatusAnterior
         If cStatusAnterior != "DESCONHECIDO" .Or. cStatusNovo == "DOWN"
@@ -140,7 +140,7 @@ User Function MonProcessarResultado(cChave, cRotulo, oRes, oState, cLogPath, cTo
                 MonLog(cLogPath, cChave + " falha ao notificar telegram")
             EndIf
         EndIf
-        MonSetStatus(oState, cChave, cStatusNovo)
+        MonSetStatus(oState, cChave, cStatusNovo, oRes["LATENCIAMS"])
     EndIf
 Return Nil
 
@@ -170,38 +170,19 @@ User Function MonProcessarLicenseServer(cHost, nPort, nTimeoutMs, oState, cLogPa
     EndTry
 Return Nil
 
-User Function MonProcessarUnidade(cUnidade, cIniPath, nTimeoutMs, oState, cLogPath, cToken, cChatId)
+User Function MonProcessarUnidade(cUnidade, cIniPath, nPortaWebapp, nTimeoutMs, oState, cLogPath, cToken, cChatId)
     Local oRes
-    Local cStatusAnterior
-    Local cStatusNovo
-    Local cMsg
     Local e
 
     Try
-        oRes := MonCheckUnidade(cUnidade, cIniPath, nTimeoutMs)
+        oRes := MonCheckWebapp(cUnidade, cIniPath, nPortaWebapp, nTimeoutMs)
 
         If oRes["ERRO"] != ""
             MonLog(cLogPath, cUnidade + " sem_dados erro=" + oRes["ERRO"])
             Return Nil
         EndIf
 
-        cStatusAnterior := MonGetStatusAnterior(oState, cUnidade)
-        cStatusNovo := IIF(oRes["UP"], "UP", "DOWN")
-
-        MonLog(cLogPath, cUnidade + " " + oRes["HOST"] + ":" + AllTrim(Str(oRes["PORT"])) + " status=" + cStatusNovo)
-
-        If cStatusNovo != cStatusAnterior
-            // Não notifica "[OK] ... voltou" na primeira execução (não havia
-            // estado anterior pra "voltar" de); mas transição pra DOWN sempre
-            // notifica, mesmo vindo de DESCONHECIDO (unidade já nasce caída).
-            If cStatusAnterior != "DESCONHECIDO" .Or. cStatusNovo == "DOWN"
-                cMsg := MonMontarMensagem(cUnidade, oRes["HOST"], oRes["PORT"], cStatusNovo)
-                If !MonNotificarTelegram(cToken, cChatId, cMsg)
-                    MonLog(cLogPath, cUnidade + " falha ao notificar telegram")
-                EndIf
-            EndIf
-            MonSetStatus(oState, cUnidade, cStatusNovo)
-        EndIf
+        MonProcessarResultado(cUnidade, cUnidade, oRes, oState, cLogPath, cToken, cChatId)
     Catch e
         MonLog(cLogPath, cUnidade + " erro_interno=" + e:description)
     EndTry
