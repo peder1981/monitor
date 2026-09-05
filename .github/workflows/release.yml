@@ -93,8 +93,40 @@ jobs:
           name: monitor-${{ matrix.plataforma }}
           path: monitor/${{ matrix.pacote }}
 
-  release:
+  installer-windows:
     needs: build
+    runs-on: windows-latest
+    steps:
+      - name: Checkout monitor
+        uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: monitor-windows-amd64
+          path: dist
+
+      - name: Extrai o zip pro instalador ler os arquivos soltos
+        shell: bash
+        run: |
+          cd dist
+          7z x monitor-windows-amd64.zip
+          cp MonitorService.exe MonitorTUI.exe config.example.json abrir-painel.bat ..
+
+      - name: Instalador Windows (Inno Setup)
+        shell: bash
+        run: |
+          choco install innosetup --no-progress -y
+          VERSAO="${GITHUB_REF_NAME#v}"
+          "/c/Program Files (x86)/Inno Setup 6/ISCC.exe" //DAppVersion="$VERSAO" installer/monitor.iss
+          ls -la Monitor-Setup-*.exe
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: monitor-installer-windows
+          path: Monitor-Setup-*.exe
+
+  release:
+    needs: [build, installer-windows]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v4
