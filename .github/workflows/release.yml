@@ -11,13 +11,28 @@ env:
   GO_VERSION: "1.24"
 
 jobs:
-  # O advplc build embute Fyne no stub (mesmo para um programa TUI como
-  # este) e precisa de CGO pra linkar -- so compilamos no windows-latest,
-  # que ja vem com o toolchain necessario (confirmado: o workflow do
-  # GesCon nao instala nenhum compilador C extra pra Windows, so pra
-  # Linux). E o unico alvo que este projeto precisa mesmo.
+  # O advplc build embute Fyne no stub mesmo pra um programa console/TUI
+  # como este, e precisa de CGO pra linkar -- por isso cada plataforma
+  # compila no seu proprio runner (mesmo padrao do GesCon), nao cross-
+  # compile de um so.
   build:
-    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            plataforma: linux-amd64
+            ext: ""
+            pacote: monitor-linux-amd64.tar.gz
+          - os: windows-latest
+            plataforma: windows-amd64
+            ext: ".exe"
+            pacote: monitor-windows-amd64.zip
+          - os: macos-latest
+            plataforma: darwin-arm64
+            ext: ""
+            pacote: monitor-darwin-arm64.tar.gz
+    runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout monitor
         uses: actions/checkout@v4
@@ -40,29 +55,43 @@ jobs:
         with:
           go-version: ${{ env.GO_VERSION }}
 
+      - name: Dependencias do Fyne (Linux)
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y libgl1-mesa-dev xorg-dev
+
       - name: Build advplc
         shell: bash
         run: |
           cd AdvPP
-          go build -o "$RUNNER_TEMP/advplc.exe" ./cmd/advplc
+          go build -o "$RUNNER_TEMP/advplc${{ matrix.ext }}" ./cmd/advplc
 
-      - name: Build MonitorService.exe e MonitorTUI.exe
+      - name: Build MonitorService e MonitorTUI
         shell: bash
         env:
           ADVPP_SRC: ${{ github.workspace }}/AdvPP
         run: |
           cd monitor
-          "$RUNNER_TEMP/advplc.exe" build src/monitor.prw -o MonitorService.exe
-          "$RUNNER_TEMP/advplc.exe" build src/monitor_tui.prw -o MonitorTUI.exe
+          "$RUNNER_TEMP/advplc${{ matrix.ext }}" build src/monitor.prw -o "MonitorService${{ matrix.ext }}"
+          "$RUNNER_TEMP/advplc${{ matrix.ext }}" build src/monitor_tui.prw -o "MonitorTUI${{ matrix.ext }}"
+
+      - name: Empacota (Windows)
+        if: runner.os == 'Windows'
+        shell: bash
+        run: |
+          cd monitor
+          7z a -tzip "${{ matrix.pacote }}" MonitorService.exe MonitorTUI.exe config.example.json abrir-painel.bat
+
+      - name: Empacota (Linux/macOS)
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          cd monitor
+          tar -czf "${{ matrix.pacote }}" MonitorService MonitorTUI config.example.json
 
       - uses: actions/upload-artifact@v4
         with:
-          name: monitor-windows-amd64
-          path: |
-            monitor/MonitorService.exe
-            monitor/MonitorTUI.exe
-            monitor/config.example.json
-            monitor/abrir-painel.bat
+          name: monitor-${{ matrix.plataforma }}
+          path: monitor/${{ matrix.pacote }}
 
   release:
     needs: build
