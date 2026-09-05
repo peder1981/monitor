@@ -38,10 +38,10 @@ UninstallDisplayIcon={app}\MonitorTUI.exe
 Name: "brazilianportuguese"; MessagesFile: "compiler:Languages\BrazilianPortuguese.isl"
 
 [Files]
-Source: "MonitorService.exe"; DestDir: "{app}"; Flags: ignoreversion
-Source: "MonitorTUI.exe"; DestDir: "{app}"; Flags: ignoreversion
-Source: "config.example.json"; DestDir: "{app}"; Flags: ignoreversion
-Source: "abrir-painel.bat"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\MonitorService.exe"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\MonitorTUI.exe"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\config.example.json"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\abrir-painel.bat"; DestDir: "{app}"; Flags: ignoreversion
 
 [Dirs]
 ; config.json/state.json/monitor.log sao escritos pelo proprio monitor
