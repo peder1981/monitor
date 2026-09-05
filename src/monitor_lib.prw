@@ -171,7 +171,7 @@ User Function MonProcessarUnidade(cUnidade, cIniPath, nTimeoutMs, oState, cLogPa
     Local e
 
     Try
-        oRes := MonCheckWebapp(cUnidade, cIniPath, 19191, nTimeoutMs)
+        oRes := MonCheckUnidade(cUnidade, cIniPath, nTimeoutMs)
 
         If oRes["ERRO"] != ""
             MonLog(cLogPath, cUnidade + " sem_dados erro=" + oRes["ERRO"])
