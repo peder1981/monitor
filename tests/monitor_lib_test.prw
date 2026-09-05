@@ -29,15 +29,15 @@ User Function MonitorLibTest()
 
     FErase(cStatePath)
     oState := MonLoadState(cStatePath)
-    ConOut("teste4_status_novo=" + MonGetStatusAnterior(oState, "TCPSP"))
+    ConOut("teste4b_status_novo=" + MonGetStatusAnterior(oState, "TCPSP"))
 
-    MonSetStatus(oState, "TCPSP", "UP")
-    ConOut("teste5_status_apos_set=" + MonGetStatusAnterior(oState, "TCPSP"))
+    MonSetStatus(oState, "TCPSP", "UP", 0)
+    ConOut("teste5b_status_apos_set=" + MonGetStatusAnterior(oState, "TCPSP"))
 
-    ConOut("teste6_save=" + IIF(MonSaveState(cStatePath, oState), "SIM", "NAO"))
+    ConOut("teste6b_save=" + IIF(MonSaveState(cStatePath, oState), "SIM", "NAO"))
 
     oState := MonLoadState(cStatePath)
-    ConOut("teste7_status_apos_reload=" + MonGetStatusAnterior(oState, "TCPSP"))
+    ConOut("teste7b_status_apos_reload=" + MonGetStatusAnterior(oState, "TCPSP"))
     ConOut("teste8_status_outra_unidade=" + MonGetStatusAnterior(oState, "TCPRJ"))
 
     MonSetStatus(oState, "TCPSP", "UP", 842)
@@ -240,6 +240,54 @@ User Function MonitorLibTest()
 
     FErase(cIni4)
     FErase(cLog4)
+
+    // teste45-46 (achado 1 da revisao final): latencia fracionaria (como a
+    // que TimeCounter() retorna de verdade) deve ser arredondada para
+    // inteiro antes de logar/gravar em state.json -- nunca com casas
+    // decimais, que estourariam o PadL(8) da TUI e virariam numero
+    // truncado/ilegivel na tela.
+    Local oState10 := JsonObject():New()
+    Local cLog10   := "test_monitor_latencia_fracionaria.log"
+    Local oRes10   := JsonObject():New()
+
+    FErase(cLog10)
+    oRes10["HOST"]       := "127.0.0.1"
+    oRes10["PORT"]       := 19191
+    oRes10["UP"]         := .T.
+    oRes10["LATENCIAMS"] := 0.5071559999999997
+
+    MonProcessarResultado("TCPFRAC", "TCPFRAC", oRes10, oState10, cLog10, "TOKEN_FAKE", "0")
+    ConOut("teste45_latencia_arredondada=" + Str(MonGetLatenciaAnterior(oState10, "TCPFRAC")))
+
+    Local cLogTxt10 := MemoRead(cLog10)
+    ConOut("teste46_log_latencia_inteira=" + IIF("latenciaMs=1" $ cLogTxt10, "SIM", "NAO"))
+    ConOut("teste46b_log_sem_latencia_fracionaria=" + IIF("latenciaMs=0.5" $ cLogTxt10, "NAO", "SIM"))
+
+    FErase(cLog10)
+
+    // teste47-49 (achado 2 da revisao final): a latencia deve ser gravada
+    // em TODO ciclo, mesmo quando o status nao muda -- MonSetStatus nao
+    // pode ficar preso dentro do "If cStatusNovo != cStatusAnterior" (isso
+    // so deve controlar a notificacao do Telegram).
+    Local oState9 := JsonObject():New()
+    Local cLog9   := "test_monitor_latencia_estavel.log"
+    Local oRes9   := JsonObject():New()
+
+    FErase(cLog9)
+    oRes9["HOST"]       := "127.0.0.1"
+    oRes9["PORT"]       := 19191
+    oRes9["UP"]         := .T.
+    oRes9["LATENCIAMS"] := 100
+
+    MonProcessarResultado("TCPFIX", "TCPFIX", oRes9, oState9, cLog9, "TOKEN_FAKE", "0")
+    ConOut("teste47_latencia_ciclo1=" + Str(MonGetLatenciaAnterior(oState9, "TCPFIX")))
+
+    oRes9["LATENCIAMS"] := 250
+    MonProcessarResultado("TCPFIX", "TCPFIX", oRes9, oState9, cLog9, "TOKEN_FAKE", "0")
+    ConOut("teste48_status_ciclo2_sem_mudanca=" + MonGetStatusAnterior(oState9, "TCPFIX"))
+    ConOut("teste49_latencia_ciclo2_atualizou=" + IIF(MonGetLatenciaAnterior(oState9, "TCPFIX") == 250, "SIM", "NAO"))
+
+    FErase(cLog9)
 
     ConOut("MONITOR_LIB_TEST_FIM")
 Return

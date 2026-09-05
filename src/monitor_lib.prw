@@ -17,7 +17,7 @@ User Function MonCheckWebapp(cUnidade, cIniPath, nPortaWebapp, nTimeoutMs)
         Return oRes
     EndIf
 
-    FWHttpTimeout(nTimeoutMs / 1000)
+    FWHttpTimeout(Max(1, Int((nTimeoutMs + 999) / 1000)))
     nT1 := TimeCounter()
     nStatus := FWHttpGet("http://" + cHost + ":" + AllTrim(Str(nPortaWebapp)) + "/")
     oRes["LATENCIAMS"] := TimeCounter() - nT1
@@ -130,12 +130,14 @@ Return oRes
 User Function MonProcessarResultado(cChave, cRotulo, oRes, oState, cLogPath, cToken, cChatId)
     Local cStatusAnterior
     Local cStatusNovo
+    Local nLatenciaMs
     Local cMsg
 
     cStatusAnterior := MonGetStatusAnterior(oState, cChave)
     cStatusNovo := IIF(oRes["UP"], "UP", "DOWN")
+    nLatenciaMs := Round(oRes["LATENCIAMS"], 0)
 
-    MonLog(cLogPath, cChave + " " + oRes["HOST"] + ":" + AllTrim(Str(oRes["PORT"])) + " status=" + cStatusNovo + " latenciaMs=" + AllTrim(Str(oRes["LATENCIAMS"])))
+    MonLog(cLogPath, cChave + " " + oRes["HOST"] + ":" + AllTrim(Str(oRes["PORT"])) + " status=" + cStatusNovo + " latenciaMs=" + AllTrim(Str(nLatenciaMs)))
 
     If cStatusNovo != cStatusAnterior
         If cStatusAnterior != "DESCONHECIDO" .Or. cStatusNovo == "DOWN"
@@ -144,8 +146,9 @@ User Function MonProcessarResultado(cChave, cRotulo, oRes, oState, cLogPath, cTo
                 MonLog(cLogPath, cChave + " falha ao notificar telegram")
             EndIf
         EndIf
-        MonSetStatus(oState, cChave, cStatusNovo, oRes["LATENCIAMS"])
     EndIf
+
+    MonSetStatus(oState, cChave, cStatusNovo, nLatenciaMs)
 Return Nil
 
 User Function MonProcessarDbaccess(cUnidade, cHostAppserver, nPortaDbaccess, nTimeoutMs, oState, cLogPath, cToken, cChatId)

@@ -1,11 +1,19 @@
 # Monitor de Unidades Protheus
 
-Vigia o broker TCP (SmartClient) de cada unidade Protheus listada num
-`.ini` de conexão existente, e avisa no Telegram quando uma unidade cai
-ou volta. Opcionalmente também vigia o dbaccess de cada unidade (mesmo
-host do appserver, porta configurável) e um license server centralizado
-(único para todo o ambiente) — ver `portaDbaccess`/`licenseServer` em
-"Configurar" abaixo.
+Vigia o appserver web de cada unidade Protheus listada num `.ini` de
+conexão existente — checagem HTTP (`GET` simples numa porta fixa) com
+medição de latência — e avisa no Telegram quando uma unidade cai ou
+volta. Opcionalmente também vigia o dbaccess de cada unidade (mesmo
+host do appserver, porta configurável, checagem TCP) e um license
+server centralizado (único para todo o ambiente, checagem TCP) — ver
+`portaDbaccess`/`licenseServer` em "Configurar" abaixo.
+
+O monitor roda como um serviço de fundo (`MonitorService.exe`, sem
+interface, pensado pra ficar sempre ligado) e tem, à parte, um painel
+interativo (`MonitorTUI.exe`, aberto via `abrir-painel.bat`) que mostra
+o status/latência de cada unidade e permite iniciar/parar o serviço e
+ver o log — os dois são executáveis separados, o painel não substitui
+o serviço.
 
 ## Instalar
 
@@ -31,7 +39,12 @@ e preencha:
 - `unidades`: lista dos nomes de seção do `.ini` a vigiar (ex: `TCPSP`,
   `TCPRJ`, ...).
 - `intervaloSegundos` / `timeoutMs`: frequência da checagem e timeout
-  de cada tentativa de conexão TCP.
+  de cada tentativa de checagem (tanto do `GET` HTTP do appserver
+  quanto das checagens TCP de dbaccess/license server). `timeoutMs` é
+  convertido internamente para segundos inteiros, sempre arredondado
+  pra cima e com no mínimo 1 segundo — ou seja, `timeoutMs: 500` vira
+  1 segundo de timeout, não "0 segundos" (que a biblioteca HTTP trata
+  como "sem timeout configurado", 30s por padrão).
 - `portaWebapp`: porta HTTP fixa (ex: `8090`) usada pra checar o appserver
   de cada unidade — o host continua vindo do `.ini` (`Server=` da seção),
   só a porta muda de "a porta do `.ini`" pra essa, fixa. A checagem faz um
@@ -53,37 +66,46 @@ com a chave da própria unidade (appserver).
 
 ## Rodar os testes
 
-`tests/monitor_lib_test.prw` cobre `src/monitor_lib.prw` (checagem TCP,
+`tests/monitor_lib_test.prw` cobre `src/monitor_lib.prw` (checagem HTTP
+do appserver com latência, checagem TCP de dbaccess/license server,
 estado, config, log, montagem de mensagem e os ciclos de
 `MonProcessarUnidade`/`MonProcessarDbaccess`/`MonProcessarLicenseServer`).
 Vários testes (`teste1`, `teste35`, `teste39`, `teste40`...) precisam de
-algo escutando em `127.0.0.1:19191` antes de rodar a suite — os demais
-testes usam portas que ninguém escuta de propósito, então não precisam
-de setup.
+um servidor HTTP real escutando em `127.0.0.1:19191` antes de rodar a
+suite — a checagem do appserver faz um `GET` de verdade, então um
+listener TCP cru que só aceita e fecha a conexão não serve (a
+requisição HTTP não recebe resposta válida e o teste lê como caído).
+Os demais testes usam portas que ninguém escuta de propósito, então não
+precisam de setup.
 
-1. Suba um listener descartável na porta 19191 (fica escutando até você
-   matar o processo com Ctrl+C):
+`tests/monitor_tui_lib_test.prw` cobre `src/monitor_tui_lib.prw`
+(montagem das linhas/tabela da TUI, detecção de processo rodando) — é
+só função pura sobre strings e JSON, sem nenhuma chamada de rede, então
+não precisa do listener.
+
+1. Suba um servidor HTTP descartável na porta 19191 (fica escutando até
+   você matar o processo com Ctrl+C):
 
        python3 -c "
-       import socket
-       s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-       s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-       s.bind(('127.0.0.1', 19191))
-       s.listen(5)
-       while True:
-           conn, addr = s.accept()
-           conn.close()
+       import http.server
+       class H(http.server.BaseHTTPRequestHandler):
+           def do_GET(self):
+               self.send_response(200); self.end_headers(); self.wfile.write(b'ok')
+           def log_message(self, *a): pass
+       http.server.HTTPServer(('127.0.0.1', 19191), H).serve_forever()
        "
 
-2. Em outro terminal, rode a suite (ajuste o caminho do `advplc` pra onde
-   ele estiver instalado):
+2. Em outro terminal, rode as duas suites (ajuste o caminho do `advplc`
+   pra onde ele estiver instalado):
 
        cd tests && /caminho/para/advplc run monitor_lib_test.prw
+       cd tests && /caminho/para/advplc run monitor_tui_lib_test.prw
 
-3. A última linha da saída deve ser `MONITOR_LIB_TEST_FIM`, sem nenhuma
-   linha de erro do compilador/interpretador acima dela. Cada asserção
-   individual aparece como `testeN_descricao=SIM|NAO` (ou o valor
-   esperado) — releia a saída se algo não bater.
+3. A última linha da saída de cada suite deve ser `MONITOR_LIB_TEST_FIM`
+   ou `MONITOR_TUI_LIB_TEST_FIM`, sem nenhuma linha de erro do
+   compilador/interpretador acima dela. Cada asserção individual aparece
+   como `testeN_descricao=SIM|NAO` (ou o valor esperado, ex:
+   `teste45_latencia_arredondada=1`) — releia a saída se algo não bater.
 
 ## Rodar
 
@@ -99,3 +121,7 @@ de setup.
   painel ASCII. Do painel dá pra ver o status/latência de cada
   unidade, iniciar/parar o `MonitorService`, e ver as últimas linhas
   do log — tudo com teclado, sem precisar saber nenhum comando.
+  **O painel ainda não tem uma tela pra editar a configuração** —
+  `config.json` continua sendo editado à mão, com um editor de texto
+  qualquer, fora do painel (essa é uma lacuna conhecida, não uma
+  omissão de documentação).

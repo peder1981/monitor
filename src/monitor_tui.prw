@@ -27,7 +27,7 @@ User Function MonitorTuiMain()
             "Servico: " + IIF(MonTuiVerificarServicoRodando(), "RODANDO", "PARADO") + Chr(10) + Chr(10) + ;
             "[1] Iniciar servico  [2] Parar servico  [3] Ver log  [4] Sair", "39", 70)
 
-        nOpcao := Val(FWGetText("Escolha uma opcao (1-4, ou aguarde 5s pra atualizar)", "", .F.))
+        nOpcao := Val(FWGetText("Escolha uma opcao (1-4)", "", .F.))
 
         Do Case
         Case nOpcao == 1
