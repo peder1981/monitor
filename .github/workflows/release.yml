@@ -118,12 +118,12 @@ jobs:
           choco install innosetup --no-progress -y
           VERSAO="${GITHUB_REF_NAME#v}"
           "/c/Program Files (x86)/Inno Setup 6/ISCC.exe" //DAppVersion="$VERSAO" installer/monitor.iss
-          ls -la Monitor-Setup-*.exe
+          ls -la installer/Monitor-Setup-*.exe
 
       - uses: actions/upload-artifact@v4
         with:
           name: monitor-installer-windows
-          path: Monitor-Setup-*.exe
+          path: installer/Monitor-Setup-*.exe
 
   release:
     needs: [build, installer-windows]
