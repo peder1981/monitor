@@ -91,31 +91,33 @@ e preencha:
   chave não existir, o license server não é checado.
 
 Cada unidade é checada em `http://<host>:<porta>/totvs_broker_query` —
-o mesmo endpoint que a página HTML de status do TOTVS Broker usa. A
-unidade conta como `UP` quando o HTTP responde com status abaixo de 500
-**e** o corpo é reconhecivelmente uma página do broker (protege contra
-"o host respondeu alguma coisa, mas não é o broker" virar um falso UP).
-Servers individuais da tabela do broker que entram em quarentena geram
-um alerta próprio, granular por `host:porta` do server — independente
-do alerta de broker inteiro cair/voltar. O status de cada server é
-binário (`OK`/`QUARENTENA`, lido da coluna "Quarentena"/"Início
-ocorrência" da tabela) — **outros estados que o broker pode reportar
-(server desabilitado, bloqueado por escalabilidade) não são
-distinguidos nem alertados nesta versão**, só a quarentena. **Limitação
-conhecida:** o campo `Motivos` da tabela do broker (texto livre, quando
-preenchido) nunca foi observado com conteúdo em nenhum ambiente de
-teste — é capturado e aparece no alerta quando vier preenchido, mas seu
-formato
-real não está validado. **Segunda limitação conhecida:** a detecção de
-quarentena foi confirmada contra uma fixture real da variante "TOTVS
-Broker para SmartClient" (9 de 14 servers em quarentena); a variante
-"TOTVS Broker para HTTP" — a que a Ortobom usa na porta 8090 — nunca foi
-observada com um server realmente em quarentena. O parser foi
-endurecido pra nunca reportar `OK` por engano se a marcação vier
-diferente do esperado (célula com atributo, tag aninhada tipo tooltip),
-mas o formato exato da quarentena na variante HTTP continua não
-confirmado — peça ao operador uma captura real assim que algum server
-entrar em quarentena, e adicione como fixture de teste.
+o mesmo endpoint que a página de status do TOTVS Broker usa. **O broker
+devolve formatos diferentes dependendo de quem pergunta**: um navegador
+recebe uma página HTML; o `FWHttpGet` do monitor (que não manda os
+headers que um navegador manda) recebe **JSON** — confirmado em campo
+contra um broker real (achado pós-deploy, 2026-09-30). O monitor detecta
+os dois formatos automaticamente (`MonParseBrokerResposta`): tenta JSON
+primeiro (é o que realmente chega em produção, e é estritamente melhor —
+tem `inquarantine`/`disabled` como booleano de verdade, não precisa
+inferir de texto de coluna), cai pro parser de HTML se o corpo não for
+JSON de broker. A unidade conta como `UP` quando o HTTP responde com
+status abaixo de 500 **e** o corpo é reconhecivelmente um broker (JSON
+com a chave `servers`, ou HTML com o título do broker) — protege contra
+"o host respondeu alguma coisa, mas não é o broker" virar um falso UP.
+
+Servers individuais da tabela do broker que entram em quarentena ou são
+desabilitados geram um alerta próprio, granular por `host:porta` do
+server — independente do alerta de broker inteiro cair/voltar. O status
+de cada server é `OK`/`QUARENTENA`/`DESABILITADO` (via JSON: booleanos
+`inquarantine`/`disabled`; via HTML: só `OK`/`QUARENTENA`, lido da
+coluna "Quarentena"/"Início ocorrência" — o HTML não expõe um estado de
+"desabilitado" separado). **Limitação conhecida:** o campo de motivo
+(`disabled_reasons` no JSON, `Motivos` no HTML) nunca foi observado com
+conteúdo em nenhum ambiente de teste ou captura real — é capturado e
+aparece no alerta quando vier preenchido, mas seu formato real não está
+validado. O estado "bloqueado por escalabilidade", mencionado na
+documentação original do broker, não aparece em nenhuma captura real
+(JSON ou HTML) observada até agora e não é distinguido nesta versão.
 
 Alertas de dbaccess saem como `TCPSP dbaccess (host:porta) caiu/voltou`
 e de license server como `License Server (host:porta) caiu/voltou`; o
@@ -146,9 +148,12 @@ ORTORJ):
 `tests/monitor_lib_test.prw` cobre `src/monitor_lib.prw` (checagem TCP
 de dbaccess/license server, estado, config, log, montagem de mensagem).
 `tests/monitor_broker_test.prw` cobre `src/monitor_broker.prw` (parser
-do HTML do TOTVS Broker contra duas fixtures reais em `tests/fixtures/`
-— uma saudável, outra com 9 de 14 servers em quarentena —, a checagem
-via `/totvs_broker_query`, e o alerta granular por server).
+do HTML e do JSON do TOTVS Broker contra três fixtures reais em
+`tests/fixtures/` — HTML saudável, HTML com 9 de 14 servers em
+quarentena, e JSON real de produção —, a checagem via
+`/totvs_broker_query`, o alerta granular por server nos três estados
+OK/QUARENTENA/DESABILITADO, e o dispatcher que escolhe JSON ou HTML
+automaticamente).
 `tests/monitor_dashboard_test.prw` cobre `src/monitor_dashboard.prw`
 (geração do HTML consolidado e da rota HTTP, sem precisar de rede —
 `MonServirDashboard`, que sobe o servidor de verdade, é testado

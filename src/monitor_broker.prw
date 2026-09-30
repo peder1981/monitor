@@ -283,6 +283,92 @@ User Function MonParseBrokerHtml(cHtml)
     oRes["SERVERS"]         := MonExtrairServers(cHtml, cModo)
 Return oRes
 
+// Achado de campo (pos-deploy real): o broker devolve JSON (nao HTML)
+// quando o client nao manda os headers que um navegador manda -- e
+// exatamente o caso do FWHttpGet do monitor. A fixture HTML colada no
+// inicio do projeto veio de um navegador de verdade; em producao, o
+// FWHttpGet recebe JSON do mesmo endpoint, mesma versao de broker. O
+// JSON e estritamente melhor pra esse parser: "inquarantine"/"disabled"
+// sao booleanos de verdade, nao precisa inferir de texto de coluna.
+User Function MonParseBrokerJson(cBody)
+    Local oRes := JsonObject():New()
+    Local oJson := JsonObject():New()
+    Local aServers := {}
+    Local aServersOrig
+    Local oServOrig
+    Local oServ
+    Local i
+
+    oRes["VALIDO"]          := .F.
+    oRes["SESSOESATIVAS"]   := 0
+    oRes["CONEXOESATIVAS"]  := 0
+    oRes["VERSAO"]           := ""
+    oRes["SERVERS"]          := {}
+
+    If !oJson:FromJson(cBody)
+        Return oRes
+    EndIf
+    If !oJson:HasProperty("servers")
+        Return oRes
+    EndIf
+
+    oRes["VALIDO"] := .T.
+    oRes["VERSAO"] := IIF(oJson:HasProperty("version"), oJson["version"], "")
+
+    If oJson:HasProperty("total")
+        oRes["SESSOESATIVAS"]  := oJson["total"]["sessions"]
+        oRes["CONEXOESATIVAS"] := oJson["total"]["connections"]
+    EndIf
+
+    aServersOrig := oJson["servers"]
+    For i := 1 To Len(aServersOrig)
+        oServOrig := aServersOrig[i]
+        oServ := JsonObject():New()
+
+        oServ["HOSTPORTA"]  := oServOrig["server"]
+        oServ["SESSOES"]    := oServOrig["sessions"]
+        oServ["CONEXOES"]   := oServOrig["connections"]
+        oServ["USUARIOS"]   := oServOrig["users"]
+        oServ["THREADS"]    := oServOrig["threads"]
+        oServ["MEMORIAKB"]  := oServOrig["memory"]
+        oServ["CPU"]        := oServOrig["cpu"]
+        oServ["UPTIME"]     := oServOrig["uptime"]
+        oServ["PID"]        := oServOrig["pid"]
+        oServ["MOTIVO"]     := IIF(oServOrig:HasProperty("disabled_reasons"), oServOrig["disabled_reasons"], "")
+
+        If oServOrig["inquarantine"]
+            oServ["STATUS"]           := "QUARENTENA"
+            oServ["INICIOQUARENTENA"] := oServOrig["quarantine_entry_time"]
+        ElseIf oServOrig["disabled"]
+            oServ["STATUS"]           := "DESABILITADO"
+            oServ["INICIOQUARENTENA"] := oServOrig["disabled_entry_time"]
+        Else
+            oServ["STATUS"]           := "OK"
+            oServ["INICIOQUARENTENA"] := ""
+        EndIf
+
+        AAdd(aServers, oServ)
+    Next
+    oRes["SERVERS"] := aServers
+Return oRes
+
+// Ponto unico de entrada pro parsing: tenta JSON primeiro (formato que o
+// FWHttpGet do monitor realmente recebe em producao); se o corpo nao for
+// JSON valido de broker, cai pro parser de HTML (mantido pra nao quebrar
+// quem hoje recebe HTML por algum motivo -- ex: proxy/cache no meio do
+// caminho, ou uma configuracao de broker diferente).
+User Function MonParseBrokerResposta(cBody)
+    Local cTrim := AllTrim(cBody)
+    Local oRes
+
+    If Left(cTrim, 1) == "{"
+        oRes := MonParseBrokerJson(cTrim)
+        If oRes["VALIDO"]
+            Return oRes
+        EndIf
+    EndIf
+Return MonParseBrokerHtml(cBody)
+
 User Function MonCheckBroker(cUnidade, cHost, nPorta, nTimeoutMs)
     Local oRes := JsonObject():New()
     Local nT1
@@ -302,7 +388,7 @@ User Function MonCheckBroker(cUnidade, cHost, nPorta, nTimeoutMs)
     cBody := FWHttpBody()
 
     lHttpOk := (nStatus > 0 .And. nStatus < 500)
-    oParsed := MonParseBrokerHtml(cBody)
+    oParsed := MonParseBrokerResposta(cBody)
 
     oRes["UP"]              := (lHttpOk .And. oParsed["VALIDO"])
     oRes["SESSOESATIVAS"]   := oParsed["SESSOESATIVAS"]
@@ -311,6 +397,9 @@ User Function MonCheckBroker(cUnidade, cHost, nPorta, nTimeoutMs)
     oRes["SERVERS"]          := oParsed["SERVERS"]
 Return oRes
 
+// Achado de campo: o JSON real do broker devolve "disabled" como
+// booleano de verdade (alem de "inquarantine"), entao STATUS deixou de
+// ser binario -- agora e OK/QUARENTENA/DESABILITADO.
 User Function MonMontarMensagemServer(cUnidade, cHostPorta, cStatusNovo, cInicioQuarentena, cMotivo)
     Local cTexto
 
@@ -319,8 +408,13 @@ User Function MonMontarMensagemServer(cUnidade, cHostPorta, cStatusNovo, cInicio
         If cMotivo != ""
             cTexto += ", motivo: " + cMotivo
         EndIf
+    ElseIf cStatusNovo == "DESABILITADO"
+        cTexto := "[ALERTA] " + cUnidade + " server " + cHostPorta + " foi desabilitado as " + cInicioQuarentena
+        If cMotivo != ""
+            cTexto += ", motivo: " + cMotivo
+        EndIf
     Else
-        cTexto := "[OK] " + cUnidade + " server " + cHostPorta + " saiu da quarentena"
+        cTexto := "[OK] " + cUnidade + " server " + cHostPorta + " voltou ao normal"
     EndIf
 Return cTexto
 
@@ -331,7 +425,7 @@ User Function MonProcessarServidorBroker(cUnidade, oServ, oState, cLogPath, cTok
     Local cMsg
 
     If cStatusNovo != cStatusAnterior
-        If cStatusAnterior != "DESCONHECIDO" .Or. cStatusNovo == "QUARENTENA"
+        If cStatusAnterior != "DESCONHECIDO" .Or. cStatusNovo != "OK"
             cMsg := MonMontarMensagemServer(cUnidade, oServ["HOSTPORTA"], cStatusNovo, oServ["INICIOQUARENTENA"], oServ["MOTIVO"])
             If !MonNotificarTelegram(cToken, cChatId, cMsg)
                 MonLog(cLogPath, cChave + " falha ao notificar telegram")

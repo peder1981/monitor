@@ -128,7 +128,7 @@ User Function MonitorBrokerTest()
     ConOut("testeMsg1_quarentena_tem_unidade=" + IIF("ORTOSP" $ cMsgQ, "SIM", "NAO"))
     ConOut("testeMsg2_quarentena_tem_hostporta=" + IIF("10.0.100.62:1236" $ cMsgQ, "SIM", "NAO"))
     ConOut("testeMsg3_quarentena_tem_horario=" + IIF("12:34:30" $ cMsgQ, "SIM", "NAO"))
-    ConOut("testeMsg4_ok_diz_saiu=" + IIF("saiu da quarentena" $ cMsgO, "SIM", "NAO"))
+    ConOut("testeMsg4_ok_diz_voltou=" + IIF("voltou ao normal" $ cMsgO, "SIM", "NAO"))
     ConOut("testeMsg5_motivo_aparece_quando_preenchido=" + IIF("falha de comunicacao" $ cMsgM, "SIM", "NAO"))
     ConOut("testeMsg6_motivo_nao_aparece_quando_vazio=" + IIF("motivo:" $ cMsgQ, "NAO", "SIM"))
 
@@ -227,6 +227,87 @@ User Function MonitorBrokerTest()
     ConOut("testeRobustez1_hostporta=" + oServSintetico["HOSTPORTA"])
     ConOut("testeRobustez2_conexoes=" + Str(oServSintetico["CONEXOES"]))
     ConOut("testeRobustez3_nao_finge_ok_com_atributo=" + IIF(oServSintetico["STATUS"] == "OK", "NAO", "SIM"))
+
+    // achado pos-deploy real: o broker devolve JSON (nao HTML) quando o
+    // client nao e um navegador -- e o caso do proprio monitor. Fixture
+    // real colada pelo operador em campo (unidade ORTOSP, broker
+    // 24.3.1.9, 5 servers, todos OK).
+    Local cJsonReal := MemoRead("fixtures/broker_json_real.json")
+    Local oParsedJson
+
+    ConOut("testeFix3_json_carregou=" + IIF(cJsonReal != "", "SIM", "NAO"))
+
+    oParsedJson := MonParseBrokerJson(cJsonReal)
+    ConOut("testeJson1_valido=" + IIF(oParsedJson["VALIDO"], "SIM", "NAO"))
+    ConOut("testeJson2_sessoes=" + Str(oParsedJson["SESSOESATIVAS"]))
+    ConOut("testeJson3_conexoes=" + Str(oParsedJson["CONEXOESATIVAS"]))
+    ConOut("testeJson4_versao=" + oParsedJson["VERSAO"])
+    ConOut("testeJson5_qtd_servers=" + Str(Len(oParsedJson["SERVERS"])))
+
+    Local oServJson := oParsedJson["SERVERS"][1]
+    ConOut("testeJson6_server1_hostporta=" + oServJson["HOSTPORTA"])
+    ConOut("testeJson7_server1_usuarios=" + Str(oServJson["USUARIOS"]))
+    ConOut("testeJson8_server1_memoria=" + Str(oServJson["MEMORIAKB"]))
+    ConOut("testeJson9_server1_status=" + oServJson["STATUS"])
+
+    // JSON invalido/vazio nao pode estourar excecao
+    ConOut("testeJson10_vazio_nao_valido=" + IIF(MonParseBrokerJson("")["VALIDO"], "NAO", "SIM"))
+    ConOut("testeJson11_lixo_nao_valido=" + IIF(MonParseBrokerJson("{isso nao e json valido")["VALIDO"], "NAO", "SIM"))
+    ConOut("testeJson12_sem_servers_nao_valido=" + IIF(MonParseBrokerJson('{"foo":"bar"}')["VALIDO"], "NAO", "SIM"))
+
+    // quarentena/desabilitado via booleano -- SINTETICO (a fixture real
+    // colada pelo operador nao tinha nenhum server em quarentena/
+    // desabilitado no momento da captura), mas o campo "inquarantine"/
+    // "disabled" e booleano de verdade no payload real, diferente do
+    // HTML (onde so dava pra inferir por texto de coluna).
+    Local cJsonQuarentena := '{"version":"1.0","total":{"sessions":1,"connections":1},"servers":[' + ;
+        '{"server":"10.0.100.99:1236","connections":0,"sessions":0,"users":0,"threads":0,' + ;
+        '"memory":0,"cpu":0,"uptime":"-","pid":0,"inquarantine":true,' + ;
+        '"quarantine_entry_time":"17:00:00","disabled":false,"disabled_entry_time":"-",' + ;
+        '"disabled_reasons":""}]}'
+    Local oParsedQ := MonParseBrokerJson(cJsonQuarentena)
+    Local oServQ2 := oParsedQ["SERVERS"][1]
+    ConOut("testeJsonQ1_status=" + oServQ2["STATUS"])
+    ConOut("testeJsonQ2_inicio=" + oServQ2["INICIOQUARENTENA"])
+
+    Local cJsonDesabilitado := '{"version":"1.0","total":{"sessions":1,"connections":1},"servers":[' + ;
+        '{"server":"10.0.100.99:1237","connections":0,"sessions":0,"users":0,"threads":0,' + ;
+        '"memory":0,"cpu":0,"uptime":"-","pid":0,"inquarantine":false,' + ;
+        '"quarantine_entry_time":"-","disabled":true,"disabled_entry_time":"18:00:00",' + ;
+        '"disabled_reasons":"falha de rede"}]}'
+    Local oParsedD := MonParseBrokerJson(cJsonDesabilitado)
+    Local oServD := oParsedD["SERVERS"][1]
+    ConOut("testeJsonD1_status=" + oServD["STATUS"])
+    ConOut("testeJsonD2_inicio=" + oServD["INICIOQUARENTENA"])
+    ConOut("testeJsonD3_motivo=" + oServD["MOTIVO"])
+
+    // --- MonParseBrokerResposta: dispatcher JSON/HTML ---
+    ConOut("testeResp1_json_valido=" + IIF(MonParseBrokerResposta(cJsonReal)["VALIDO"], "SIM", "NAO"))
+    ConOut("testeResp2_html_http_ainda_valido=" + IIF(MonParseBrokerResposta(cHtmlHttp)["VALIDO"], "SIM", "NAO"))
+    ConOut("testeResp3_html_smartclient_ainda_valido=" + IIF(MonParseBrokerResposta(cHtmlSC)["VALIDO"], "SIM", "NAO"))
+    ConOut("testeResp4_lixo_invalido=" + IIF(MonParseBrokerResposta("nada disso")["VALIDO"], "NAO", "SIM"))
+
+    // --- MonMontarMensagemServer / MonProcessarServidorBroker: estado DESABILITADO ---
+    Local cMsgD := MonMontarMensagemServer("ORTOSP", "10.0.100.62:1236", "DESABILITADO", "18:00:00", "falha de rede")
+    ConOut("testeMsgD1_tem_desabilitado=" + IIF("desabilitado" $ cMsgD, "SIM", "NAO"))
+    ConOut("testeMsgD2_tem_motivo=" + IIF("falha de rede" $ cMsgD, "SIM", "NAO"))
+
+    Local oState5 := JsonObject():New()
+    Local cLog5   := "test_monitor_desabilitado.log"
+    Local oServDesab := JsonObject():New()
+
+    oServDesab["HOSTPORTA"]        := "10.0.100.62:1236"
+    oServDesab["STATUS"]           := "DESABILITADO"
+    oServDesab["INICIOQUARENTENA"] := "18:00:00"
+    oServDesab["MOTIVO"]           := "falha de rede"
+
+    FErase(cLog5)
+    // primeira vez ja desabilitado (DESCONHECIDO -> DESABILITADO) deve notificar,
+    // mesma regra ja usada pra QUARENTENA/DOWN (primeira observacao ruim alerta).
+    MonProcessarServidorBroker("ORTOSP", oServDesab, oState5, cLog5, "TOKEN_FAKE", "0")
+    ConOut("testeServD1_status=" + MonGetStatusAnterior(oState5, "ORTOSP_SERVER_10.0.100.62:1236"))
+    ConOut("testeServD2_notificou=" + IIF("falha ao notificar telegram" $ MemoRead(cLog5), "SIM", "NAO"))
+    FErase(cLog5)
 
     ConOut("MONITOR_BROKER_TEST_FIM")
 Return

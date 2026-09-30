@@ -266,6 +266,22 @@ status muda, evita spam a cada ciclo). `STATUS` é binário (`OK` ou
   do campo `Motivos`, nunca observado preenchido — não bloqueia nada,
   só um texto extra opcional no alerta. Também: a spec original
   (Objetivo 3) mencionava "desabilitado"/"bloqueado por escalabilidade"
-  como estados monitorados, mas a implementação final só distingue
+  como estados monitorados, mas a implementação final só distinguia
   `OK`/`QUARENTENA` (ver Ruling no ledger de execução) — os outros dois
-  estados não são detectados nem alertados nesta versão.
+  estados não eram detectados nem alertados.
+
+  **Atualização pós-deploy (2026-09-30, mesmo dia):** achado de campo
+  em produção mudou esse quadro inteiro. O `FWHttpGet` do monitor (sem
+  os headers que um navegador manda) recebe **JSON** do
+  `/totvs_broker_query`, não o HTML que as fixtures originais (coladas
+  por um navegador) mostravam — mesma versão de broker (24.3.1.9),
+  formato diferente por content negotiation. O JSON expõe
+  `inquarantine`/`disabled` como booleano de verdade — `DESABILITADO`
+  virou um terceiro estado real, detectado e alertado
+  (`MonParseBrokerJson`, fixture real em
+  `tests/fixtures/broker_json_real.json`). "Bloqueado por
+  escalabilidade" continua sem nenhuma evidência real (nem no JSON, nem
+  em nenhuma captura HTML) — segue não detectado. O parser de HTML foi
+  mantido como fallback (`MonParseBrokerResposta` tenta JSON primeiro,
+  cai pro HTML se o corpo não for JSON de broker), caso algum ambiente
+  devolva HTML por algum motivo (proxy, cache, configuração diferente).
