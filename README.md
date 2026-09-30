@@ -97,11 +97,25 @@ unidade conta como `UP` quando o HTTP responde com status abaixo de 500
 "o host respondeu alguma coisa, mas não é o broker" virar um falso UP).
 Servers individuais da tabela do broker que entram em quarentena geram
 um alerta próprio, granular por `host:porta` do server — independente
-do alerta de broker inteiro cair/voltar. **Limitação conhecida:** o
-campo `Motivos` da tabela do broker (texto livre, quando preenchido)
-nunca foi observado com conteúdo em nenhum ambiente de teste — é
-capturado e aparece no alerta quando vier preenchido, mas seu formato
-real não está validado.
+do alerta de broker inteiro cair/voltar. O status de cada server é
+binário (`OK`/`QUARENTENA`, lido da coluna "Quarentena"/"Início
+ocorrência" da tabela) — **outros estados que o broker pode reportar
+(server desabilitado, bloqueado por escalabilidade) não são
+distinguidos nem alertados nesta versão**, só a quarentena. **Limitação
+conhecida:** o campo `Motivos` da tabela do broker (texto livre, quando
+preenchido) nunca foi observado com conteúdo em nenhum ambiente de
+teste — é capturado e aparece no alerta quando vier preenchido, mas seu
+formato
+real não está validado. **Segunda limitação conhecida:** a detecção de
+quarentena foi confirmada contra uma fixture real da variante "TOTVS
+Broker para SmartClient" (9 de 14 servers em quarentena); a variante
+"TOTVS Broker para HTTP" — a que a Ortobom usa na porta 8090 — nunca foi
+observada com um server realmente em quarentena. O parser foi
+endurecido pra nunca reportar `OK` por engano se a marcação vier
+diferente do esperado (célula com atributo, tag aninhada tipo tooltip),
+mas o formato exato da quarentena na variante HTTP continua não
+confirmado — peça ao operador uma captura real assim que algum server
+entrar em quarentena, e adicione como fixture de teste.
 
 Alertas de dbaccess saem como `TCPSP dbaccess (host:porta) caiu/voltou`
 e de license server como `License Server (host:porta) caiu/voltou`; o

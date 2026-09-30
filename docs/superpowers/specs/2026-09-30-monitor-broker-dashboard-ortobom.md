@@ -253,8 +253,19 @@ status muda, evita spam a cada ciclo). `STATUS` é binário (`OK` ou
   funcionar). `unidades` muda de tipo (string → objeto) de forma
   consistente em todos os consumidores (`MonitorMain`, dbaccess,
   dashboard).
-- **Gap explícito:** detecção de status de server individual (🟢
-  CONFIRMADA contra fixture real com 9 servers em quarentena — ver
-  seção "Checagem do broker"). Único gap residual é o conteúdo real
+- **Gap explícito (corrigido após revisão final):** detecção de status
+  de server individual é 🟢 CONFIRMADA contra fixture real **só para a
+  variante "TOTVS Broker para SmartClient"** (9 servers em quarentena —
+  ver seção "Checagem do broker"). A variante "TOTVS Broker para HTTP"
+  — a que a Ortobom usa em produção, porta 8090 — nunca foi observada
+  com um server realmente em quarentena; fica 🟡 INFERIDA por analogia
+  estrutural até uma fixture real aparecer. O parser foi endurecido na
+  revisão final (`MonCelulasLinha` robusto a `<td class=...>` e tags
+  aninhadas) pra nunca reportar `OK` por engano nesse caso, mas o
+  formato exato continua não confirmado. Outro gap: o conteúdo real
   do campo `Motivos`, nunca observado preenchido — não bloqueia nada,
-  só um texto extra opcional no alerta.
+  só um texto extra opcional no alerta. Também: a spec original
+  (Objetivo 3) mencionava "desabilitado"/"bloqueado por escalabilidade"
+  como estados monitorados, mas a implementação final só distingue
+  `OK`/`QUARENTENA` (ver Ruling no ledger de execução) — os outros dois
+  estados não são detectados nem alertados nesta versão.
