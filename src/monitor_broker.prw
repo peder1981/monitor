@@ -272,6 +272,45 @@ User Function MonCheckBroker(cUnidade, cHost, nPorta, nTimeoutMs)
     oRes["SERVERS"]          := oParsed["SERVERS"]
 Return oRes
 
+User Function MonMontarMensagemServer(cUnidade, cHostPorta, cStatusNovo, cInicioQuarentena, cMotivo)
+    Local cTexto
+
+    If cStatusNovo == "QUARENTENA"
+        cTexto := "[ALERTA] " + cUnidade + " server " + cHostPorta + " entrou em quarentena as " + cInicioQuarentena
+        If cMotivo != ""
+            cTexto += ", motivo: " + cMotivo
+        EndIf
+    Else
+        cTexto := "[OK] " + cUnidade + " server " + cHostPorta + " saiu da quarentena"
+    EndIf
+Return cTexto
+
+User Function MonProcessarServidorBroker(cUnidade, oServ, oState, cLogPath, cToken, cChatId)
+    Local cChave := cUnidade + "_SERVER_" + oServ["HOSTPORTA"]
+    Local cStatusAnterior := MonGetStatusAnterior(oState, cChave)
+    Local cStatusNovo := oServ["STATUS"]
+    Local cMsg
+
+    If cStatusNovo != cStatusAnterior
+        If cStatusAnterior != "DESCONHECIDO" .Or. cStatusNovo == "QUARENTENA"
+            cMsg := MonMontarMensagemServer(cUnidade, oServ["HOSTPORTA"], cStatusNovo, oServ["INICIOQUARENTENA"], oServ["MOTIVO"])
+            If !MonNotificarTelegram(cToken, cChatId, cMsg)
+                MonLog(cLogPath, cChave + " falha ao notificar telegram")
+            EndIf
+        EndIf
+    EndIf
+
+    oState[cChave] := cStatusNovo
+Return Nil
+
+User Function MonProcessarServersBroker(cUnidade, aServers, oState, cLogPath, cToken, cChatId)
+    Local i
+
+    For i := 1 To Len(aServers)
+        MonProcessarServidorBroker(cUnidade, aServers[i], oState, cLogPath, cToken, cChatId)
+    Next
+Return Nil
+
 User Function MonProcessarUnidade(cUnidade, cHost, nPorta, nTimeoutMs, oState, cLogPath, cToken, cChatId)
     Local oRes
     Local e
@@ -279,6 +318,7 @@ User Function MonProcessarUnidade(cUnidade, cHost, nPorta, nTimeoutMs, oState, c
     Try
         oRes := MonCheckBroker(cUnidade, cHost, nPorta, nTimeoutMs)
         MonProcessarResultado(cUnidade, cUnidade, oRes, oState, cLogPath, cToken, cChatId)
+        MonProcessarServersBroker(cUnidade, oRes["SERVERS"], oState, cLogPath, cToken, cChatId)
     Catch e
         MonLog(cLogPath, cUnidade + " erro_interno=" + e:description)
     EndTry

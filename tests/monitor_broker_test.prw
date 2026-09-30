@@ -120,5 +120,84 @@ User Function MonitorBrokerTest()
 
     FErase(cLog2)
 
+    // --- MonMontarMensagemServer ---
+    Local cMsgQ := MonMontarMensagemServer("ORTOSP", "10.0.100.62:1236", "QUARENTENA", "12:34:30", "")
+    Local cMsgO := MonMontarMensagemServer("ORTOSP", "10.0.100.62:1236", "OK", "", "")
+    Local cMsgM := MonMontarMensagemServer("ORTOSP", "10.0.100.62:1236", "QUARENTENA", "12:34:30", "falha de comunicacao")
+
+    ConOut("testeMsg1_quarentena_tem_unidade=" + IIF("ORTOSP" $ cMsgQ, "SIM", "NAO"))
+    ConOut("testeMsg2_quarentena_tem_hostporta=" + IIF("10.0.100.62:1236" $ cMsgQ, "SIM", "NAO"))
+    ConOut("testeMsg3_quarentena_tem_horario=" + IIF("12:34:30" $ cMsgQ, "SIM", "NAO"))
+    ConOut("testeMsg4_ok_diz_saiu=" + IIF("saiu da quarentena" $ cMsgO, "SIM", "NAO"))
+    ConOut("testeMsg5_motivo_aparece_quando_preenchido=" + IIF("falha de comunicacao" $ cMsgM, "SIM", "NAO"))
+    ConOut("testeMsg6_motivo_nao_aparece_quando_vazio=" + IIF("motivo:" $ cMsgQ, "NAO", "SIM"))
+
+    // --- MonProcessarServidorBroker: transicoes de estado ---
+    Local oState3 := JsonObject():New()
+    Local cLog3   := "test_monitor_server_broker.log"
+    Local oServOk := JsonObject():New()
+    Local oServQ  := JsonObject():New()
+
+    oServOk["HOSTPORTA"]        := "10.0.100.62:1236"
+    oServOk["STATUS"]           := "OK"
+    oServOk["INICIOQUARENTENA"] := ""
+    oServOk["MOTIVO"]           := ""
+
+    oServQ["HOSTPORTA"]        := "10.0.100.62:1236"
+    oServQ["STATUS"]           := "QUARENTENA"
+    oServQ["INICIOQUARENTENA"] := "12:34:30"
+    oServQ["MOTIVO"]           := ""
+
+    FErase(cLog3)
+
+    // 1a passagem OK (DESCONHECIDO -> OK) nao deve notificar
+    MonProcessarServidorBroker("ORTOSP", oServOk, oState3, cLog3, "TOKEN_FAKE", "0")
+    ConOut("testeServ1_status_apos_ok_inicial=" + MonGetStatusAnterior(oState3, "ORTOSP_SERVER_10.0.100.62:1236"))
+    ConOut("testeServ2_nao_notificou_ok_inicial=" + IIF("falha ao notificar telegram" $ MemoRead(cLog3), "NAO", "SIM"))
+
+    // OK -> QUARENTENA deve notificar (log de falha aparece, pois token e fake)
+    MonProcessarServidorBroker("ORTOSP", oServQ, oState3, cLog3, "TOKEN_FAKE", "0")
+    ConOut("testeServ3_status_apos_quarentena=" + MonGetStatusAnterior(oState3, "ORTOSP_SERVER_10.0.100.62:1236"))
+    ConOut("testeServ4_notificou_quarentena=" + IIF("falha ao notificar telegram" $ MemoRead(cLog3), "SIM", "NAO"))
+
+    // QUARENTENA -> QUARENTENA (sem mudanca) nao deve renotificar
+    Local cLogAntes := MemoRead(cLog3)
+    MonProcessarServidorBroker("ORTOSP", oServQ, oState3, cLog3, "TOKEN_FAKE", "0")
+    ConOut("testeServ5_sem_renotificar_quarentena_repetida=" + IIF(MemoRead(cLog3) == cLogAntes, "SIM", "NAO"))
+
+    // QUARENTENA -> OK deve notificar "saiu"
+    Local cLogAntes2 := MemoRead(cLog3)
+    MonProcessarServidorBroker("ORTOSP", oServOk, oState3, cLog3, "TOKEN_FAKE", "0")
+    ConOut("testeServ6_status_apos_saida=" + MonGetStatusAnterior(oState3, "ORTOSP_SERVER_10.0.100.62:1236"))
+    ConOut("testeServ7_notificou_saida=" + IIF(MemoRead(cLog3) != cLogAntes2, "SIM", "NAO"))
+
+    FErase(cLog3)
+
+    // --- MonProcessarServersBroker: unidade independente por hostporta ---
+    Local oState4 := JsonObject():New()
+    Local cLog4   := "test_monitor_servers_broker.log"
+    Local oServA  := JsonObject():New()
+    Local oServB  := JsonObject():New()
+    Local aServs  := {}
+
+    oServA["HOSTPORTA"]        := "10.0.100.62:1236"
+    oServA["STATUS"]           := "OK"
+    oServA["INICIOQUARENTENA"] := ""
+    oServA["MOTIVO"]           := ""
+
+    oServB["HOSTPORTA"]        := "10.0.100.62:1237"
+    oServB["STATUS"]           := "QUARENTENA"
+    oServB["INICIOQUARENTENA"] := "09:00:00"
+    oServB["MOTIVO"]           := ""
+
+    AAdd(aServs, oServA)
+    AAdd(aServs, oServB)
+
+    FErase(cLog4)
+    MonProcessarServersBroker("ORTOSP", aServs, oState4, cLog4, "TOKEN_FAKE", "0")
+    ConOut("testeServs1_a_ok=" + MonGetStatusAnterior(oState4, "ORTOSP_SERVER_10.0.100.62:1236"))
+    ConOut("testeServs2_b_quarentena=" + MonGetStatusAnterior(oState4, "ORTOSP_SERVER_10.0.100.62:1237"))
+    FErase(cLog4)
+
     ConOut("MONITOR_BROKER_TEST_FIM")
 Return
