@@ -56,6 +56,10 @@ User Function MonitorDashboardTest()
     ConOut("teste10_html_sem_dbaccess_quando_vazio=" + IIF("dbaccess" $ cHtml, "NAO", "SIM"))
     ConOut("teste11_html_sem_license_quando_ausente=" + IIF("License Server" $ cHtml, "NAO", "SIM"))
 
+    // teste11b: link pra pagina de edicao de unidades (achado do
+    // operador em campo: quer editar hosts/portas pelo proprio dashboard).
+    ConOut("teste11b_html_tem_link_config=" + IIF("/config" $ cHtml, "SIM", "NAO"))
+
     // teste16-17: auto-refresh (achado importante da revisao final) -- a
     // pagina precisa se recarregar sozinha no intervalo configurado, via
     // <meta http-equiv='refresh'>.

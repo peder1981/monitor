@@ -83,6 +83,10 @@ e preencha:
   fica disponível (ver "Dashboard web" abaixo). Se ausente ou inválida,
   o `MonitorService` loga um aviso e roda normalmente sem o dashboard —
   as checagens e os alertas do Telegram não dependem disso.
+- `dashboardSenha` (opcional): senha pra habilitar a edição de unidades
+  pelo dashboard web (ver "Editar unidades pelo dashboard" abaixo). Sem
+  essa chave, o dashboard fica só leitura — a página de edição aparece,
+  mas não salva nada.
 - `portaDbaccess` (opcional): porta do dbaccess, igual pra todas as
   unidades — o host usado é o mesmo host da unidade. Se essa chave não
   existir no `config.json`, o dbaccess não é checado.
@@ -143,6 +147,31 @@ ORTORJ):
 
 ![Dashboard web consolidado](docs/screenshots/dashboard-web.jpg)
 
+### Editar unidades pelo dashboard
+
+A página tem um link **"Configurar unidades"** que leva a um formulário
+(`/config`) pra adicionar, remover ou mudar host/porta das unidades
+monitoradas — uma por linha, formato `NOME HOST PORTA`. Salvar exige uma
+senha (chave `dashboardSenha` no `config.json` — texto livre, qualquer
+valor serve). Sem essa chave no `config.json`, a edição fica desabilitada
+(o formulário aparece, mas o botão "Salvar" fica travado). A mudança vale
+a partir do próximo ciclo de checagem — o `MonitorService` relê o
+`config.json` a cada ciclo, **não precisa reiniciar o serviço**.
+
+**Limitação de segurança, documentada com transparência:** essa "senha"
+não é HTTP Basic Auth de verdade nem um controle de acesso forte — é só
+um campo de formulário comparado no servidor. Três motivos técnicos
+concretos: (1) o servidor HTTP embutido no AdvPP não expõe headers da
+requisição pro código AdvPL, então não dá pra ler um cabeçalho
+`Authorization`; (2) o mesmo servidor só aceita corpo de requisição em
+JSON, e um `<form>` HTML comum não consegue montar isso — por isso o
+formulário usa `GET` em vez de `POST`, o que deixa a senha e a lista de
+unidades visíveis na URL e no histórico do navegador; (3) todo o
+dashboard roda em HTTP puro, sem TLS, então qualquer coisa nessa rede
+capturando tráfego vê a senha em texto claro. Trate como uma barreira
+contra edição acidental/casual por alguém sem querer, não como proteção
+contra alguém malicioso com acesso à rede `10.0.100.x`.
+
 ## Rodar os testes
 
 `tests/monitor_lib_test.prw` cobre `src/monitor_lib.prw` (checagem TCP
@@ -157,14 +186,18 @@ automaticamente).
 `tests/monitor_dashboard_test.prw` cobre `src/monitor_dashboard.prw`
 (geração do HTML consolidado e da rota HTTP, sem precisar de rede —
 `MonServirDashboard`, que sobe o servidor de verdade, é testado
-manualmente, ver Task 6 do plano de implementação).
-Vários testes (`teste1`, `teste35`, `teste39`, `teste40`...) precisam de
-um servidor HTTP real escutando em `127.0.0.1:19191` antes de rodar a
-suite — a checagem do appserver faz um `GET` de verdade, então um
-listener TCP cru que só aceita e fecha a conexão não serve (a
-requisição HTTP não recebe resposta válida e o teste lê como caído).
-Os demais testes usam portas que ninguém escuta de propósito, então não
-precisam de setup.
+manualmente). `tests/monitor_config_ui_test.prw` cobre
+`src/monitor_config_ui.prw` (parser do formulário de texto pra lista de
+unidades, round-trip completo de gravação do `config.json` preservando
+as demais chaves, e as rotas `/config`/`/config/salvar` — incluindo
+senha certa/errada/ausente — sem precisar de rede).
+Alguns testes (`monitor_lib_test.prw`/`monitor_broker_test.prw`, em
+funções como `MonPingServico`/`MonCheckBroker`) precisam de um servidor
+HTTP real escutando em `127.0.0.1:19191` antes de rodar a suite — a
+checagem faz um `GET` de verdade, então um listener TCP cru que só
+aceita e fecha a conexão não serve (a requisição HTTP não recebe
+resposta válida e o teste lê como caído). Os demais testes usam portas
+que ninguém escuta de propósito, então não precisam de setup.
 
 `tests/monitor_tui_lib_test.prw` cobre `src/monitor_tui_lib.prw`
 (montagem das linhas/tabela da TUI, detecção de processo rodando) — é
@@ -183,17 +216,19 @@ não precisa do listener.
        http.server.HTTPServer(('127.0.0.1', 19191), H).serve_forever()
        "
 
-2. Em outro terminal, rode as quatro suites (ajuste o caminho do
+2. Em outro terminal, rode as cinco suites (ajuste o caminho do
    `advplc` pra onde ele estiver instalado):
 
        cd tests && /caminho/para/advplc run monitor_lib_test.prw
        cd tests && /caminho/para/advplc run monitor_broker_test.prw
        cd tests && /caminho/para/advplc run monitor_dashboard_test.prw
+       cd tests && /caminho/para/advplc run monitor_config_ui_test.prw
        cd tests && /caminho/para/advplc run monitor_tui_lib_test.prw
 
 3. A última linha da saída de cada suite deve ser `MONITOR_LIB_TEST_FIM`,
-   `MONITOR_BROKER_TEST_FIM`, `MONITOR_DASHBOARD_TEST_FIM` ou
-   `MONITOR_TUI_LIB_TEST_FIM` (conforme a suite), sem nenhuma linha de
+   `MONITOR_BROKER_TEST_FIM`, `MONITOR_DASHBOARD_TEST_FIM`,
+   `MONITOR_CONFIG_UI_TEST_FIM` ou `MONITOR_TUI_LIB_TEST_FIM` (conforme
+   a suite), sem nenhuma linha de
    erro do compilador/interpretador acima dela. Cada asserção individual aparece
    como `testeN_descricao=SIM|NAO` (ou o valor esperado, ex:
    `teste45_latencia_arredondada=1`) — releia a saída se algo não bater.

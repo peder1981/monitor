@@ -67,6 +67,25 @@ User Function MonGetUnidades(oConfig)
     EndIf
 Return oConfig["unidades"]
 
+// Gate reusado no startup (fatal se invalido) e no hot-reload de cada
+// ciclo do MonitorMain (se invalido, mantem o config anterior em memoria
+// em vez de derrubar o loop) -- necessario desde que o dashboard web
+// ganhou a capacidade de editar config.json em producao.
+User Function MonConfigValido(oConfig)
+    If oConfig == Nil
+        Return .F.
+    EndIf
+    If Len(MonGetUnidades(oConfig)) == 0
+        Return .F.
+    EndIf
+    If !oConfig:HasProperty("intervaloSegundos") .Or. oConfig["intervaloSegundos"] <= 0
+        Return .F.
+    EndIf
+    If !oConfig:HasProperty("timeoutMs") .Or. oConfig["timeoutMs"] <= 0
+        Return .F.
+    EndIf
+Return .T.
+
 User Function MonMontarMensagem(cUnidade, cHost, nPort, cStatusNovo)
     Local cTexto
 

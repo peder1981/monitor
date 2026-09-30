@@ -210,5 +210,34 @@ User Function MonitorLibTest()
 
     FErase(cLog9)
 
+    // teste50-54 (achado do operador: quer editar unidades pelo dashboard
+    // sem reiniciar o servico): MonConfigValido e o gate reusado tanto no
+    // startup quanto no hot-reload de cada ciclo do MonitorMain.
+    Local cCfgOk := "test_config_valido.json"
+    Local cCfgSemUnid := "test_config_sem_unidades2.json"
+    Local cCfgIntervaloZero := "test_config_intervalo_zero.json"
+    Local cCfgTimeoutZero := "test_config_timeout_zero.json"
+
+    MemoWrite(cCfgOk, '{"intervaloSegundos":60,"timeoutMs":1000,' + ;
+                      '"unidades":[{"nome":"A","host":"127.0.0.1","porta":80}]}')
+    ConOut("teste50_config_valido=" + IIF(MonConfigValido(MonLoadConfig(cCfgOk)), "SIM", "NAO"))
+    FErase(cCfgOk)
+
+    MemoWrite(cCfgSemUnid, '{"intervaloSegundos":60,"timeoutMs":1000,"unidades":[]}')
+    ConOut("teste51_config_sem_unidades_invalido=" + IIF(MonConfigValido(MonLoadConfig(cCfgSemUnid)), "NAO", "SIM"))
+    FErase(cCfgSemUnid)
+
+    MemoWrite(cCfgIntervaloZero, '{"intervaloSegundos":0,"timeoutMs":1000,' + ;
+                                 '"unidades":[{"nome":"A","host":"127.0.0.1","porta":80}]}')
+    ConOut("teste52_intervalo_zero_invalido=" + IIF(MonConfigValido(MonLoadConfig(cCfgIntervaloZero)), "NAO", "SIM"))
+    FErase(cCfgIntervaloZero)
+
+    MemoWrite(cCfgTimeoutZero, '{"intervaloSegundos":60,"timeoutMs":0,' + ;
+                               '"unidades":[{"nome":"A","host":"127.0.0.1","porta":80}]}')
+    ConOut("teste53_timeout_zero_invalido=" + IIF(MonConfigValido(MonLoadConfig(cCfgTimeoutZero)), "NAO", "SIM"))
+    FErase(cCfgTimeoutZero)
+
+    ConOut("teste54_config_nil_invalido=" + IIF(MonConfigValido(Nil), "NAO", "SIM"))
+
     ConOut("MONITOR_LIB_TEST_FIM")
 Return

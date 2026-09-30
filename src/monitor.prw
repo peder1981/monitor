@@ -1,6 +1,7 @@
 #include "monitor_lib.prw"
 #include "monitor_broker.prw"
 #include "monitor_dashboard.prw"
+#include "monitor_config_ui.prw"
 
 User Function MonitorMain()
     Local cConfigPath    := "config.json"
@@ -8,6 +9,7 @@ User Function MonitorMain()
     Local cLogPath       := "monitor.log"
     Local cDashboardPath := "dashboard.json"
     Local oConfig
+    Local oConfigNovo
     Local oState
     Local aUnidades
     Local aResUnidades
@@ -17,28 +19,9 @@ User Function MonitorMain()
     Local i
 
     oConfig := MonLoadConfig(cConfigPath)
-    If oConfig == Nil
-        ConOut("ERRO FATAL: nao foi possivel ler " + cConfigPath)
-        MonLog(cLogPath, "ERRO FATAL: nao foi possivel ler " + cConfigPath)
-        Return
-    EndIf
-
-    aUnidades := MonGetUnidades(oConfig)
-    If Len(aUnidades) == 0
-        ConOut("ERRO FATAL: config.json sem a chave 'unidades' ou lista vazia")
-        MonLog(cLogPath, "ERRO FATAL: config.json sem a chave 'unidades' ou lista vazia")
-        Return
-    EndIf
-
-    If !oConfig:HasProperty("intervaloSegundos") .Or. oConfig["intervaloSegundos"] <= 0
-        ConOut("ERRO FATAL: config.json sem 'intervaloSegundos' valido (> 0)")
-        MonLog(cLogPath, "ERRO FATAL: config.json sem 'intervaloSegundos' valido (> 0)")
-        Return
-    EndIf
-
-    If !oConfig:HasProperty("timeoutMs") .Or. oConfig["timeoutMs"] <= 0
-        ConOut("ERRO FATAL: config.json sem 'timeoutMs' valido (> 0)")
-        MonLog(cLogPath, "ERRO FATAL: config.json sem 'timeoutMs' valido (> 0)")
+    If !MonConfigValido(oConfig)
+        ConOut("ERRO FATAL: config.json invalido (unidades/intervaloSegundos/timeoutMs)")
+        MonLog(cLogPath, "ERRO FATAL: config.json invalido (unidades/intervaloSegundos/timeoutMs)")
         Return
     EndIf
 
@@ -52,9 +35,22 @@ User Function MonitorMain()
 
     oState := MonLoadState(cStatePath)
 
-    ConOut("Monitor iniciado. " + AllTrim(Str(Len(aUnidades))) + " unidade(s), intervalo de " + AllTrim(Str(oConfig["intervaloSegundos"])) + "s.")
+    ConOut("Monitor iniciado. " + AllTrim(Str(Len(MonGetUnidades(oConfig)))) + " unidade(s), intervalo de " + AllTrim(Str(oConfig["intervaloSegundos"])) + "s.")
 
     While .T.
+        // Hot-reload: rele config.json a cada ciclo (o dashboard web pode
+        // editar "unidades" via /config, sem reiniciar o servico). Se a
+        // leitura falhar ou vier invalida (arquivo sendo escrito no
+        // exato instante da leitura, por exemplo), mantem o ultimo config
+        // valido em memoria em vez de derrubar o loop.
+        oConfigNovo := MonLoadConfig(cConfigPath)
+        If MonConfigValido(oConfigNovo)
+            oConfig := oConfigNovo
+        Else
+            MonLog(cLogPath, "AVISO: config.json invalido nesta leitura, mantendo config anterior em memoria")
+        EndIf
+
+        aUnidades    := MonGetUnidades(oConfig)
         aResUnidades := {}
         aResDbaccess := {}
         oResLicense  := Nil

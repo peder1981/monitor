@@ -17,6 +17,7 @@
   "intervaloSegundos": 60,
   "timeoutMs": 3000,
   "dashboardPorta": 9099,
+  "dashboardSenha": "COLOQUE_UMA_SENHA_AQUI",
   "telegramBotToken": "COLOQUE_O_TOKEN_DO_BOT_AQUI",
   "telegramChatId": "COLOQUE_O_CHAT_ID_AQUI",
   "portaDbaccess": 1234,
