@@ -1,29 +1,6 @@
 #include "../src/monitor_lib.prw"
 
 User Function MonitorLibTest()
-    // teste1-4: MonCheckWebapp -- checagem HTTP com latencia, porta fixa
-    // (nao vem do .ini, só o host vem). "TCPWEBOK" tem host com um
-    // servidor HTTP real escutando (subido pelo harness do teste antes de
-    // rodar este .prw, na porta 19191); "TCPWEBGHOST" nao existe no .ini.
-    Local cIniPath := "test_units.ini"
-    Local oRes
-
-    MemoWrite(cIniPath, "[TCPWEBOK]" + Chr(13) + Chr(10) + ;
-                        "Server=127.0.0.1" + Chr(13) + Chr(10))
-
-    oRes := MonCheckWebapp("TCPWEBOK", cIniPath, 19191, 2000)
-    ConOut("teste1_unidade=" + oRes["UNIDADE"])
-    ConOut("teste2_host=" + oRes["HOST"])
-    ConOut("teste3_port=" + Str(oRes["PORT"]))
-    ConOut("teste4_up=" + IIF(oRes["UP"], "SIM", "NAO"))
-    ConOut("teste5_latencia_nao_negativa=" + IIF(oRes["LATENCIAMS"] >= 0, "SIM", "NAO"))
-
-    oRes := MonCheckWebapp("TCPWEBGHOST", cIniPath, 19191, 2000)
-    ConOut("teste6_up_secao_ausente=" + IIF(oRes["UP"], "SIM", "NAO"))
-    ConOut("teste7_erro_secao_ausente=" + oRes["ERRO"])
-
-    FErase(cIniPath)
-
     Local cStatePath := "test_state.json"
     Local oState
 
@@ -174,72 +151,6 @@ User Function MonitorLibTest()
     MonProcessarLicenseServer("127.0.0.1", 19191, 500, oState8, cLog8, "TOKEN_FAKE", "0")
     ConOut("testeLatLicense_registrada=" + IIF(MonGetLatenciaAnterior(oState8, "LICENSE_SERVER") >= 0, "SIM", "NAO"))
     FErase(cLog8)
-
-    // MonProcessarUnidade (webapp/HTTP): unidade sem listener na porta
-    // configurada -> DOWN, loga, tenta notificar (com token invalido, so
-    // confirma que tentou pela linha de falha no log).
-    Local cIni2   := "test_units2.ini"
-    Local cLog2   := "test_monitor2.log"
-    Local oState2 := JsonObject():New()
-    Local cTokenFake := "TOKEN_INVALIDO_DE_PROPOSITO"
-    Local cChatFake  := "0"
-    Local cLogTxt
-
-    MemoWrite(cIni2, "[TCPX]" + Chr(13) + Chr(10) + "Server=127.0.0.1" + Chr(13) + Chr(10))
-    FErase(cLog2)
-
-    MonProcessarUnidade("TCPX", cIni2, 19194, 500, oState2, cLog2, cTokenFake, cChatFake)
-    ConOut("testePU1_status_apos_1a_passagem=" + MonGetStatusAnterior(oState2, "TCPX"))
-
-    cLogTxt := MemoRead(cLog2)
-    MonProcessarUnidade("TCPX", cIni2, 19194, 500, oState2, cLog2, cTokenFake, cChatFake)
-    ConOut("testePU2_status_apos_2a_passagem=" + MonGetStatusAnterior(oState2, "TCPX"))
-    ConOut("testePU3_log_cresceu=" + IIF(Len(MemoRead(cLog2)) > Len(cLogTxt), "SIM", "NAO"))
-    ConOut("testePU4_latencia_registrada=" + IIF(MonGetLatenciaAnterior(oState2, "TCPX") >= 0, "SIM", "NAO"))
-
-    FErase(cIni2)
-    FErase(cLog2)
-
-    // unidade com secao ausente no .ini nao deve virar DOWN -- fica
-    // DESCONHECIDO, loga "sem_dados" e nao tenta notificar.
-    Local cIni3   := "test_units3.ini"
-    Local cLog3   := "test_monitor3.log"
-    Local oState3 := JsonObject():New()
-
-    MemoWrite(cIni3, "[OUTRAUNIDADE]" + Chr(13) + Chr(10) + "Server=127.0.0.1" + Chr(13) + Chr(10))
-    FErase(cLog3)
-
-    MonProcessarUnidade("TCPGHOST", cIni3, 19194, 500, oState3, cLog3, cTokenFake, cChatFake)
-    ConOut("testePU5_status_permanece_desconhecido=" + MonGetStatusAnterior(oState3, "TCPGHOST"))
-
-    Local cLogTxt3 := MemoRead(cLog3)
-    ConOut("testePU6_log_tem_sem_dados=" + IIF("sem_dados" $ cLogTxt3, "SIM", "NAO"))
-    ConOut("testePU7_log_tem_erro=" + IIF("secao_nao_encontrada_no_ini" $ cLogTxt3, "SIM", "NAO"))
-    ConOut("testePU8_nao_tentou_notificar=" + IIF("falha ao notificar telegram" $ cLogTxt3, "NAO", "SIM"))
-
-    FErase(cIni3)
-    FErase(cLog3)
-
-    // primeira passagem com unidade ja saudavel (DESCONHECIDO -> UP) nao
-    // deve disparar o "[OK] ... voltou" espurio, mas deve gravar o estado.
-    Local cIni4   := "test_units4.ini"
-    Local cLog4   := "test_monitor4.log"
-    Local oState4 := JsonObject():New()
-
-    MemoWrite(cIni4, "[TCPUP]" + Chr(13) + Chr(10) + "Server=127.0.0.1" + Chr(13) + Chr(10))
-    FErase(cLog4)
-
-    MonProcessarUnidade("TCPUP", cIni4, 19191, 500, oState4, cLog4, cTokenFake, cChatFake)
-    ConOut("testePU9_status_apos_1a_passagem=" + MonGetStatusAnterior(oState4, "TCPUP"))
-
-    Local cLogTxt4 := MemoRead(cLog4)
-    ConOut("testePU10_nao_tentou_notificar_ok_desconhecido=" + IIF("falha ao notificar telegram" $ cLogTxt4, "NAO", "SIM"))
-
-    MonProcessarUnidade("TCPUP", cIni4, 19191, 500, oState4, cLog4, cTokenFake, cChatFake)
-    ConOut("testePU11_status_apos_2a_passagem=" + MonGetStatusAnterior(oState4, "TCPUP"))
-
-    FErase(cIni4)
-    FErase(cLog4)
 
     // teste45-46 (achado 1 da revisao final): latencia fracionaria (como a
     // que TimeCounter() retorna de verdade) deve ser arredondada para

@@ -1,30 +1,5 @@
 // Monitor library - checagem HTTP/TCP e controle de estado
 
-User Function MonCheckWebapp(cUnidade, cIniPath, nPortaWebapp, nTimeoutMs)
-    Local oRes  := JsonObject():New()
-    Local cHost := GetPvProfString(cUnidade, "Server", "", cIniPath)
-    Local nT1
-    Local nStatus
-
-    oRes["UNIDADE"] := cUnidade
-    oRes["HOST"]    := cHost
-    oRes["PORT"]    := nPortaWebapp
-
-    If cHost == ""
-        oRes["UP"]         := .F.
-        oRes["ERRO"]       := "secao_nao_encontrada_no_ini"
-        oRes["LATENCIAMS"] := 0
-        Return oRes
-    EndIf
-
-    FWHttpTimeout(Max(1, Int((nTimeoutMs + 999) / 1000)))
-    nT1 := TimeCounter()
-    nStatus := FWHttpGet("http://" + cHost + ":" + AllTrim(Str(nPortaWebapp)) + "/")
-    oRes["LATENCIAMS"] := TimeCounter() - nT1
-    oRes["UP"]   := (nStatus > 0 .And. nStatus < 500)
-    oRes["ERRO"] := ""
-Return oRes
-
 User Function MonLoadState(cStatePath)
     Local oState := JsonObject():New()
     Local cTxt   := MemoRead(cStatePath)
@@ -162,7 +137,7 @@ User Function MonProcessarDbaccess(cUnidade, cHostAppserver, nPortaDbaccess, nTi
     Catch e
         MonLog(cLogPath, cChave + " erro_interno=" + e:description)
     EndTry
-Return Nil
+Return oRes
 
 User Function MonProcessarLicenseServer(cHost, nPort, nTimeoutMs, oState, cLogPath, cToken, cChatId)
     Local cChave := "LICENSE_SERVER"
@@ -175,22 +150,4 @@ User Function MonProcessarLicenseServer(cHost, nPort, nTimeoutMs, oState, cLogPa
     Catch e
         MonLog(cLogPath, cChave + " erro_interno=" + e:description)
     EndTry
-Return Nil
-
-User Function MonProcessarUnidade(cUnidade, cIniPath, nPortaWebapp, nTimeoutMs, oState, cLogPath, cToken, cChatId)
-    Local oRes
-    Local e
-
-    Try
-        oRes := MonCheckWebapp(cUnidade, cIniPath, nPortaWebapp, nTimeoutMs)
-
-        If oRes["ERRO"] != ""
-            MonLog(cLogPath, cUnidade + " sem_dados erro=" + oRes["ERRO"])
-            Return Nil
-        EndIf
-
-        MonProcessarResultado(cUnidade, cUnidade, oRes, oState, cLogPath, cToken, cChatId)
-    Catch e
-        MonLog(cLogPath, cUnidade + " erro_interno=" + e:description)
-    EndTry
-Return Nil
+Return oRes

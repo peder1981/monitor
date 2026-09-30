@@ -243,3 +243,43 @@ User Function MonParseBrokerHtml(cHtml)
     oRes["VERSAO"]          := MonExtrairVersao(cHtml)
     oRes["SERVERS"]         := MonExtrairServers(cHtml, cModo)
 Return oRes
+
+User Function MonCheckBroker(cUnidade, cHost, nPorta, nTimeoutMs)
+    Local oRes := JsonObject():New()
+    Local nT1
+    Local nStatus
+    Local cBody
+    Local oParsed
+    Local lHttpOk
+
+    oRes["UNIDADE"] := cUnidade
+    oRes["HOST"]    := cHost
+    oRes["PORT"]    := nPorta
+
+    FWHttpTimeout(Max(1, Int((nTimeoutMs + 999) / 1000)))
+    nT1 := TimeCounter()
+    nStatus := FWHttpGet("http://" + cHost + ":" + AllTrim(Str(nPorta)) + "/totvs_broker_query")
+    oRes["LATENCIAMS"] := TimeCounter() - nT1
+    cBody := FWHttpBody()
+
+    lHttpOk := (nStatus > 0 .And. nStatus < 500)
+    oParsed := MonParseBrokerHtml(cBody)
+
+    oRes["UP"]              := (lHttpOk .And. oParsed["VALIDO"])
+    oRes["SESSOESATIVAS"]   := oParsed["SESSOESATIVAS"]
+    oRes["CONEXOESATIVAS"]  := oParsed["CONEXOESATIVAS"]
+    oRes["VERSAO"]           := oParsed["VERSAO"]
+    oRes["SERVERS"]          := oParsed["SERVERS"]
+Return oRes
+
+User Function MonProcessarUnidade(cUnidade, cHost, nPorta, nTimeoutMs, oState, cLogPath, cToken, cChatId)
+    Local oRes
+    Local e
+
+    Try
+        oRes := MonCheckBroker(cUnidade, cHost, nPorta, nTimeoutMs)
+        MonProcessarResultado(cUnidade, cUnidade, oRes, oState, cLogPath, cToken, cChatId)
+    Catch e
+        MonLog(cLogPath, cUnidade + " erro_interno=" + e:description)
+    EndTry
+Return oRes
