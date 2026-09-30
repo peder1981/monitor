@@ -8,7 +8,10 @@ permissions:
   contents: write
 
 env:
-  GO_VERSION: "1.24"
+  # O go.mod do AdvPP exige go >= 1.27.0 a partir da v4.2.0 (era 1.24.0 em
+  # v3.0.4) -- acompanhar ADVPP_VERSION se o build voltar a falhar com
+  # "requires go >= X.Y.Z".
+  GO_VERSION: "1.27.1"
 
 jobs:
   # O advplc build embute Fyne no stub mesmo pra um programa console/TUI
