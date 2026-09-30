@@ -1,0 +1,198 @@
+<!DOCTYPE html><html><head><title> TOTVS Broker para HTTP</title><meta http-equiv='cache-control' content='no-cache' charset='Windows-1252'></head><body style='color:blue; background-color:#fffffa; padding: 10px; text-align: center;' onload="checkStrorage();">
+<style>
+.sortable th {
+   cursor: pointer;
+}
+.sortable th.no-sort {
+   pointer-events: none;
+}
+.sortable th::after,
+.sortable th::before {
+ transition: color 0.2s ease-in-out;
+ font-size: 1.2em;
+ color: transparent;
+}
+.sortable th::after {
+   margin-left: 3px;
+   content: '\025B8';
+}
+.sortable th:hover::after {
+   color: inherit;
+}
+.sortable th.dir-d::after {
+   color: inherit;
+   content: '\025BE';
+}
+.sortable th.dir-u::after {
+   color: inherit;
+   content: '\025B4';
+}
+
+table, table td{border: solid thin lightgray; border-collapse: collapse; white-space:pre;}
+th{background: PeachPuff; border: solid thin lightgray;}
+
+.tooltiptext {
+  visibility: hidden;
+  background-color: black;
+  color: #ffffff;
+  text-align: center;
+  padding: 5px 0;
+  border-radius: 6px;
+  position: absolute;
+  z-index: 1;
+}
+
+.isDisabled {
+  background-color: yellow;
+  color: black;
+  font-weight: bold;
+  position: relative;
+  display: inline-block;
+  border-bottom: 1px dotted black;
+  cursor: pointer;
+}
+
+.inQuarantine {
+  background-color: #FF8488;
+  color: black;
+  font-weight: bold
+}
+
+.isBlockedByScalability {
+  color: red;
+  font-weight: bold
+}
+
+.defaultTooltip {
+  font-weight: normal
+}
+
+.isDisabled:hover .tooltiptext {
+  visibility: visible;
+}
+
+.inQuarantine:hover .tooltiptext {
+  visibility: visible;
+}
+
+.isBlockedByScalability:hover .tooltiptext {
+  visibility: visible;
+}
+
+.defaultTooltip:hover .tooltiptext {
+  visibility: visible;
+}
+</style>
+
+<script>
+function findElementRecursive(element, tag) {
+  return element.nodeName === tag ? element :
+    findElementRecursive(element.parentNode, tag)
+}
+
+function sortTH(element, dirSave, alt_sort) {
+  try {
+    var regex_dir = / dir-(u|d) /
+    var descending_th_class = ' dir-d '
+    var ascending_th_class = ' dir-u '
+    var descending_th_class = ' dir-d '
+    var ascending_th_class = ' dir-u '
+    var ascending_table_sort_class = 'asc'
+    var descending_table_sort_class = 'desc'
+    var regex_dir = / dir-(u|d) /
+    var regex_table = /\bsortable\b/
+    if (element === null) {
+      return;
+    }
+    var tr = findElementRecursive(element, 'TR')
+    if (tr === null) {
+      return;
+    }
+    var table = findElementRecursive(tr, 'TABLE')
+    if (table === null) {
+      return;
+    }
+
+    function reClassify(element, dir) {
+      element.className = element.className.replace(regex_dir, '') + dir
+    }
+    function getValue(element) {
+      return (
+        (alt_sort && element.getAttribute('data-sort-alt')) ||
+      element.getAttribute('data-sort') || element.innerText
+      )
+    }
+    if (regex_table.test(table.className)) {
+      var column_index
+      var nodes = tr.cells
+      for (var i = 0; i < nodes.length; i++) {
+        if (nodes[i] === element) {
+          column_index = element.getAttribute('data-sort-col') || i
+        } else {
+          reClassify(nodes[i], '')
+        }
+      }
+      var dir = descending_th_class
+      if ( dirSave === ascending_table_sort_class ) {
+        dir = ascending_th_class;
+      } else if ( dirSave === descending_table_sort_class ) {
+        dir = descending_th_class;
+      } else {
+        dir = descending_th_class
+        dirSave = descending_table_sort_class
+        if (
+          element.className.indexOf(descending_th_class) !== -1 ||
+          (table.className.indexOf(ascending_table_sort_class) !== -1 &&
+            element.className.indexOf(ascending_th_class) == -1)
+        ) {
+          dir = ascending_th_class
+          dirSave = ascending_table_sort_class
+        }
+      }
+      reClassify(element, dir)
+      var org_tbody = table.tBodies[0]
+      var rows = [].slice.call(org_tbody.rows, 0)
+      var reverse = dir === ascending_th_class
+      rows.sort(function (a, b) {
+        var x = getValue((reverse ? a : b).cells[column_index])
+        var y = getValue((reverse ? b : a).cells[column_index])
+        return isNaN(x - y) ? x.localeCompare(y) : x - y
+      })
+      var clone_tbody = org_tbody.cloneNode()
+      while (rows.length) {
+        clone_tbody.appendChild(rows.splice(0, 1)[0])
+      }
+      table.replaceChild(clone_tbody, org_tbody)
+
+      sessionStorage.setItem('sortBy', column_index);
+      sessionStorage.setItem('sortByDir', dirSave);
+      sessionStorage.setItem('sortAlt', alt_sort);
+    }
+  } catch (error) {
+  }
+}
+
+document.addEventListener('click', function (e) {
+  try {
+    var alt_sort = e.shiftKey || e.altKey
+    var element = findElementRecursive(e.target, 'TH');
+
+    sortTH(element, "", alt_sort);
+  } catch (error) {
+  }
+});
+
+function checkStrorage() {
+  var sortBy= sessionStorage.getItem('sortBy');
+  var sortByDir = sessionStorage.getItem('sortByDir');
+  var sortAlt = sessionStorage.getItem('sortAlt');
+
+  if (sortBy !== null && sortByDir !== null && sortAlt !== null) {
+    var n = parseInt(sortBy);
+    table = document.getElementsByClassName("sortable")[0];
+    var element = table.getElementsByTagName('TH')[n];
+    sortTH(element, sortByDir, sortAlt);
+  }
+}
+</script>
+<div style='display: inline-block;'><div style='text-align: left; color:blue; border: solid thin lightgray; background-color:whitesmoke; display: inline-block; padding: 10px; margin: auto'><h2>TOTVS Broker para HTTP em 10.0.100.115:8090</h2>Opção: STATUS<br><br>Versão 24.3.1.9 guapor lin64 rel 0b4bfda  Jul 15 2026 13:29:54 <br><br>Este broker aceita conexões de aplicações <span style='background-color:yellow'> HTTP</span>.<br>Broker iniciou operação às <span style='background-color:yellow'>03:10:02</span> de <span style='background-color:yellow'>30/09/2026</span>, agora é <span style='background-color:yellow'>10:22:58</span> de <span style='background-color:yellow'>30/09/2026</span>.<br>Existem <span style='background-color:yellow'>59 sessões ativas</span> no momento.<br>Houve 203 sessões desde o início da operação do broker.<br>Existem 175 conexões ativas no momento.<br>Houve 2457 conexões TCP desde o início da operação do broker.<br>Última conexão TCP foi às 10:22:30 de 30/09/2026.<br>Instância de execução com id 3259824.<br>Método de balanceamento: <span style='background-color:yellow'>consumo de memória</span>.<br>Webmonitor está ativo.<br>Consulta efetuada pelo client 10.0.100.203:52382.<br></div><br></div><br><div style='border: solid thin lightgray;padding: 10px; margin-top: 10px;background-color: whitesmoke; display: inline-block;'><div>Servers (5)<br><div><table class="sortable"><thead><tr><th>Server</th><th>Sessões</th><th>Conexões</th><th>Início ocorrência</th><th>Motivos</th><th>Usuários </th><th>Threads</th><th>Memória(Kb)</th><th>Cpu(%/5s)</th><th>upTime</th><th>pid</th></tr></thead><tr><td>(   1) <a href="/TOTVS_BROKER_QUERY/ServerStatus/10.0.100.115:1236">10.0.100.115:1236</a></td><td>    11</td><td>    33</td><td>-</td><td>-</td><td>    25</td><td>    65</td><td>   4.087.092</td><td>  37%</td><td>2026/09/30 03:10:02</td><td>    3259754</td></tr><tr><td>(   2) <a href="/TOTVS_BROKER_QUERY/ServerStatus/10.0.100.115:1237">10.0.100.115:1237</a></td><td>    14</td><td>    52</td><td>-</td><td>-</td><td>    29</td><td>    75</td><td>   4.587.544</td><td>  37%</td><td>2026/09/30 03:10:02</td><td>    3259765</td></tr><tr><td>(   3) <a href="/TOTVS_BROKER_QUERY/ServerStatus/10.0.100.115:1238">10.0.100.115:1238</a></td><td>    16</td><td>    45</td><td>-</td><td>-</td><td>    27</td><td>    69</td><td>   4.101.660</td><td>  37%</td><td>2026/09/30 03:10:02</td><td>    3259776</td></tr><tr><td>(   4) <a href="/TOTVS_BROKER_QUERY/ServerStatus/10.0.100.115:1239">10.0.100.115:1239</a></td><td>     8</td><td>    20</td><td>-</td><td>-</td><td>    27</td><td>    69</td><td>   4.582.344</td><td>  37%</td><td>2026/09/30 03:10:02</td><td>    3259788</td></tr><tr><td>(   5) <a href="/TOTVS_BROKER_QUERY/ServerStatus/10.0.100.115:1240">10.0.100.115:1240</a></td><td>    10</td><td>    25</td><td>-</td><td>-</td><td>    31</td><td>    77</td><td>   4.554.052</td><td>  37%</td><td>2026/09/30 03:10:02</td><td>    3259800</td></tr></table><table><br><thead><th></th><th>Sessões</th><th>Conexões</th><th>Usuários</th></tr></thead><td> <b>TOTAL</b> </td><td>59</td><td>175</td><td>139</td></tr></table></div></div>Usuários, threads, memória e cpu são informados pelos servidores configurados.<br>A coluna "Usuários" corresponde à mesma coluna no WebMonitor.<br></div></body></html>
