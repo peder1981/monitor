@@ -135,6 +135,12 @@ em quarentena). A página recarrega periodicamente sozinha e reflete
 sempre o resultado do ciclo de checagem mais recente — não é preciso
 reiniciar nada pra ela atualizar.
 
+Captura real da página (ambiente de demonstração — duas unidades no ar,
+uma fora, e um server em quarentena aparecendo na tabela da unidade
+ORTORJ):
+
+![Dashboard web consolidado](docs/screenshots/dashboard-web.jpg)
+
 ## Rodar os testes
 
 `tests/monitor_lib_test.prw` cobre `src/monitor_lib.prw` (checagem TCP
