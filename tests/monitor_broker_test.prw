@@ -199,5 +199,34 @@ User Function MonitorBrokerTest()
     ConOut("testeServs2_b_quarentena=" + MonGetStatusAnterior(oState4, "ORTOSP_SERVER_10.0.100.62:1237"))
     FErase(cLog4)
 
+    // testeCheck3b (achado importante da revisao final): testeCheck3
+    // sozinho nao provava "respondeu 200 mas nao e o broker" -- se
+    // alguem esquecer de subir o listener da 19191, o teste continuava
+    // SIM do mesmo jeito (UP=NAO por falta de resposta, nao por conteudo
+    // errado). Confirma tambem que o status HTTP foi mesmo 200.
+    MonCheckBroker("TESTEBROKER", "127.0.0.1", 19191, 2000)
+    ConOut("testeCheck3b_respondeu_200_de_verdade=" + IIF(FWHttpStatus() == 200, "SIM", "NAO"))
+
+    // testeRobustez1-3 (achado importante da revisao final): <td> com
+    // atributos (ex: <td class='inQuarantine'>) e conteudo com tag
+    // aninhada (ex: tooltip em <span>) nao podem confundir o parser a
+    // ponto de esconder uma quarentena real como "OK" em silencio.
+    // SINTETICO -- nenhuma fixture real de quarentena na variante "para
+    // HTTP" foi observada ainda (so a variante SmartClient, ver
+    // tests/fixtures/broker_smartclient_quarentena.html); isso so
+    // garante que o parser degrada com seguranca (nunca finge OK) se o
+    // markup real vier assim, nao que o formato exato esteja confirmado.
+    Local cLinhaSintetica := "<tr><td class='x'>(1) <a href=" + Chr(34) + ;
+        "/TOTVS_BROKER_QUERY/ServerStatus/10.0.100.99:1236" + Chr(34) + ;
+        ">10.0.100.99:1236</a></td><td>5</td><td>8</td>" + ;
+        "<td class='inQuarantine'>12:00:00<span class='tooltiptext'>motivo aqui</span></td>" + ;
+        "<td>-</td><td>10</td><td>20</td><td>1.000</td><td>10%</td>" + ;
+        "<td>2026/09/30 00:00:00</td><td>1234</td></tr>"
+    Local oServSintetico := MonExtrairLinhaServer(cLinhaSintetica, "HTTP")
+
+    ConOut("testeRobustez1_hostporta=" + oServSintetico["HOSTPORTA"])
+    ConOut("testeRobustez2_conexoes=" + Str(oServSintetico["CONEXOES"]))
+    ConOut("testeRobustez3_nao_finge_ok_com_atributo=" + IIF(oServSintetico["STATUS"] == "OK", "NAO", "SIM"))
+
     ConOut("MONITOR_BROKER_TEST_FIM")
 Return

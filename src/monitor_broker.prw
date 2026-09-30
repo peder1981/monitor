@@ -134,19 +134,58 @@ User Function MonExtrairHostPorta(cCelula)
     EndIf
 Return SubStr(cResto, 1, nPosAspas - 1)
 
+// Remove qualquer tag HTML de cTexto (ex: "<span class='tooltiptext'>
+// motivo</span>" dentro de uma celula) -- usado por MonCelulasLinha pra
+// nunca deixar uma tag aninhada disfarcar o valor real da celula.
+User Function MonRemoverTags(cTexto)
+    Local nPos
+    Local nFimTag
+
+    Do While .T.
+        nPos := At("<", cTexto)
+        If nPos == 0
+            Exit
+        EndIf
+        nFimTag := At(">", SubStr(cTexto, nPos))
+        If nFimTag == 0
+            cTexto := SubStr(cTexto, 1, nPos - 1)
+            Exit
+        EndIf
+        cTexto := SubStr(cTexto, 1, nPos - 1) + SubStr(cTexto, nPos + nFimTag)
+    EndDo
+Return cTexto
+
+// Achado importante da revisao final: dividir por "<td>" literal falha
+// em silencio quando a celula vem com atributo (ex: "<td class=
+// 'inQuarantine'>"), o que desalinha todas as colunas seguintes e pode
+// esconder uma quarentena real como "OK". Divide por "<td" (sem o ">"),
+// localiza o fechamento da tag ">" em cada pedaco pra achar onde o
+// conteudo real comeca. NAO remove tags aninhadas aqui -- a celula do
+// server precisa do <a href=...> intacto pra MonExtrairHostPorta; quem
+// consome a celula de quarentena/motivo (MonExtrairLinhaServer) e que
+// decide tirar tag aninhada (ex: tooltip) do proprio valor.
 User Function MonCelulasLinha(cLinha)
-    Local aPedacos := StrTokArr(cLinha, "<td>")
+    Local aPedacos := StrTokArr(cLinha, "<td")
     Local aCelulas := {}
+    Local nPosFechaTag
+    Local cConteudo
     Local nFim
     Local i
 
     For i := 2 To Len(aPedacos)
-        nFim := At("</td>", aPedacos[i])
-        If nFim == 0
-            AAdd(aCelulas, AllTrim(aPedacos[i]))
+        nPosFechaTag := At(">", aPedacos[i])
+        If nPosFechaTag == 0
+            cConteudo := ""
         Else
-            AAdd(aCelulas, AllTrim(SubStr(aPedacos[i], 1, nFim - 1)))
+            cConteudo := SubStr(aPedacos[i], nPosFechaTag + 1)
         EndIf
+
+        nFim := At("</td>", cConteudo)
+        If nFim > 0
+            cConteudo := SubStr(cConteudo, 1, nFim - 1)
+        EndIf
+
+        AAdd(aCelulas, AllTrim(cConteudo))
     Next
 Return aCelulas
 
@@ -160,8 +199,8 @@ User Function MonExtrairLinhaServer(cLinha, cModo)
     If cModo == "HTTP"
         oServ["SESSOES"]   := MonSoNumero(aCel[2])
         oServ["CONEXOES"]  := MonSoNumero(aCel[3])
-        cQuarentena         := AllTrim(aCel[4])
-        oServ["MOTIVO"]     := IIF(AllTrim(aCel[5]) == "-", "", AllTrim(aCel[5]))
+        cQuarentena         := AllTrim(MonRemoverTags(aCel[4]))
+        oServ["MOTIVO"]     := IIF(AllTrim(MonRemoverTags(aCel[5])) == "-", "", AllTrim(MonRemoverTags(aCel[5])))
         oServ["USUARIOS"]  := MonSoNumero(aCel[6])
         oServ["THREADS"]   := MonSoNumero(aCel[7])
         oServ["MEMORIAKB"] := MonSoNumero(aCel[8])
@@ -171,7 +210,7 @@ User Function MonExtrairLinhaServer(cLinha, cModo)
     Else
         oServ["SESSOES"]   := 0
         oServ["CONEXOES"]  := MonSoNumero(aCel[2])
-        cQuarentena         := AllTrim(aCel[3])
+        cQuarentena         := AllTrim(MonRemoverTags(aCel[3]))
         oServ["MOTIVO"]     := ""
         oServ["USUARIOS"]  := MonSoNumero(aCel[4])
         oServ["THREADS"]   := MonSoNumero(aCel[5])
