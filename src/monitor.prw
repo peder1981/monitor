@@ -1,12 +1,19 @@
 #include "monitor_lib.prw"
+#include "monitor_broker.prw"
+#include "monitor_dashboard.prw"
 
 User Function MonitorMain()
-    Local cConfigPath := "config.json"
-    Local cStatePath  := "state.json"
-    Local cLogPath    := "monitor.log"
+    Local cConfigPath    := "config.json"
+    Local cStatePath     := "state.json"
+    Local cLogPath       := "monitor.log"
+    Local cDashboardPath := "dashboard.json"
     Local oConfig
     Local oState
     Local aUnidades
+    Local aResUnidades
+    Local aResDbaccess
+    Local oResLicense
+    Local oResUnidade
     Local i
 
     oConfig := MonLoadConfig(cConfigPath)
@@ -23,37 +30,24 @@ User Function MonitorMain()
         Return
     EndIf
 
-    If !oConfig:HasProperty("intervaloSegundos")
-        ConOut("ERRO FATAL: config.json sem 'intervaloSegundos' valido (> 0)")
-        MonLog(cLogPath, "ERRO FATAL: config.json sem 'intervaloSegundos' valido (> 0)")
-        Return
-    EndIf
-    If oConfig["intervaloSegundos"] <= 0
+    If !oConfig:HasProperty("intervaloSegundos") .Or. oConfig["intervaloSegundos"] <= 0
         ConOut("ERRO FATAL: config.json sem 'intervaloSegundos' valido (> 0)")
         MonLog(cLogPath, "ERRO FATAL: config.json sem 'intervaloSegundos' valido (> 0)")
         Return
     EndIf
 
-    If !oConfig:HasProperty("timeoutMs")
-        ConOut("ERRO FATAL: config.json sem 'timeoutMs' valido (> 0)")
-        MonLog(cLogPath, "ERRO FATAL: config.json sem 'timeoutMs' valido (> 0)")
-        Return
-    EndIf
-    If oConfig["timeoutMs"] <= 0
+    If !oConfig:HasProperty("timeoutMs") .Or. oConfig["timeoutMs"] <= 0
         ConOut("ERRO FATAL: config.json sem 'timeoutMs' valido (> 0)")
         MonLog(cLogPath, "ERRO FATAL: config.json sem 'timeoutMs' valido (> 0)")
         Return
     EndIf
 
-    If !oConfig:HasProperty("portaWebapp")
-        ConOut("ERRO FATAL: config.json sem 'portaWebapp' valido (> 0)")
-        MonLog(cLogPath, "ERRO FATAL: config.json sem 'portaWebapp' valido (> 0)")
-        Return
-    EndIf
-    If oConfig["portaWebapp"] <= 0
-        ConOut("ERRO FATAL: config.json sem 'portaWebapp' valido (> 0)")
-        MonLog(cLogPath, "ERRO FATAL: config.json sem 'portaWebapp' valido (> 0)")
-        Return
+    If oConfig:HasProperty("dashboardPorta") .And. oConfig["dashboardPorta"] > 0
+        StartJob("MonServirDashboard", "", .F., oConfig["dashboardPorta"])
+        ConOut("Dashboard web em http://localhost:" + AllTrim(Str(oConfig["dashboardPorta"])) + "/")
+    Else
+        ConOut("AVISO: dashboardPorta ausente/invalida -- dashboard web desabilitado")
+        MonLog(cLogPath, "AVISO: dashboardPorta ausente/invalida -- dashboard web desabilitado")
     EndIf
 
     oState := MonLoadState(cStatePath)
@@ -61,18 +55,24 @@ User Function MonitorMain()
     ConOut("Monitor iniciado. " + AllTrim(Str(Len(aUnidades))) + " unidade(s), intervalo de " + AllTrim(Str(oConfig["intervaloSegundos"])) + "s.")
 
     While .T.
+        aResUnidades := {}
+        aResDbaccess := {}
+        oResLicense  := Nil
+
         For i := 1 To Len(aUnidades)
-            MonProcessarUnidade(aUnidades[i], oConfig["iniPath"], oConfig["portaWebapp"], oConfig["timeoutMs"], oState, cLogPath, oConfig["telegramBotToken"], oConfig["telegramChatId"])
+            oResUnidade := MonProcessarUnidade(aUnidades[i]["nome"], aUnidades[i]["host"], aUnidades[i]["porta"], oConfig["timeoutMs"], oState, cLogPath, oConfig["telegramBotToken"], oConfig["telegramChatId"])
+            AAdd(aResUnidades, oResUnidade)
 
             If oConfig:HasProperty("portaDbaccess")
-                MonProcessarDbaccess(aUnidades[i], GetPvProfString(aUnidades[i], "Server", "", oConfig["iniPath"]), oConfig["portaDbaccess"], oConfig["timeoutMs"], oState, cLogPath, oConfig["telegramBotToken"], oConfig["telegramChatId"])
+                AAdd(aResDbaccess, MonProcessarDbaccess(aUnidades[i]["nome"], aUnidades[i]["host"], oConfig["portaDbaccess"], oConfig["timeoutMs"], oState, cLogPath, oConfig["telegramBotToken"], oConfig["telegramChatId"]))
             EndIf
         Next
 
         If oConfig:HasProperty("licenseServer")
-            MonProcessarLicenseServer(oConfig["licenseServer"]["host"], oConfig["licenseServer"]["port"], oConfig["timeoutMs"], oState, cLogPath, oConfig["telegramBotToken"], oConfig["telegramChatId"])
+            oResLicense := MonProcessarLicenseServer(oConfig["licenseServer"]["host"], oConfig["licenseServer"]["port"], oConfig["timeoutMs"], oState, cLogPath, oConfig["telegramBotToken"], oConfig["telegramChatId"])
         EndIf
 
+        MonSalvarDashboard(cDashboardPath, aResUnidades, aResDbaccess, oResLicense)
         MonSaveState(cStatePath, oState)
         Sleep(oConfig["intervaloSegundos"] * 1000)
     EndDo

@@ -3,4 +3,5 @@
 dist/
 *.log
 state.json
+dashboard.json
 config.json
