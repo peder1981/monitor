@@ -88,10 +88,18 @@ User Function MonChecagensParaJson(aChks)
     cJson += "]"
 Return cJson
 
-User Function MonSalvarDashboard(cPath, aUnidadesRes, aDbaccessRes, oLicenseRes)
+// nIntervaloSegundos e opcional (chamada antiga de 4 args continua
+// funcionando, cai no default abaixo) -- usado so pra montar o
+// <meta http-equiv='refresh'> do dashboard (achado importante da
+// revisao final: a pagina nao se recarregava sozinha, e o README
+// afirmava que sim). Default de 30s evita "content='0'" (recarregaria
+// em loop) quando o valor vier ausente/invalido.
+User Function MonSalvarDashboard(cPath, aUnidadesRes, aDbaccessRes, oLicenseRes, nIntervaloSegundos)
     Local cJson := "{"
+    Local nIntervalo := IIF(nIntervaloSegundos == Nil .Or. nIntervaloSegundos <= 0, 30, nIntervaloSegundos)
 
     cJson += '"ATUALIZADOEM":"' + MonJsonEscape(DTOC(Date()) + " " + Time()) + '",'
+    cJson += '"INTERVALOSEGUNDOS":' + AllTrim(Str(nIntervalo)) + ','
     cJson += '"UNIDADES":' + MonUnidadesParaJson(aUnidadesRes) + ','
     cJson += '"DBACCESS":' + MonChecagensParaJson(aDbaccessRes) + ','
     cJson += '"LICENSESERVER":' + MonChecagemParaJson(oLicenseRes)
@@ -109,7 +117,9 @@ User Function MonLinhaChecagem(cNome, cHost, nPort, lUp, nLatenciaMs)
 Return cHtml
 
 User Function MonGerarDashboardHtml(oDash)
+    Local nIntervalo := IIF(oDash:HasProperty("INTERVALOSEGUNDOS") .And. oDash["INTERVALOSEGUNDOS"] > 0, oDash["INTERVALOSEGUNDOS"], 30)
     Local cHtml := "<!doctype html><html><head><meta charset='utf-8'>" + ;
+        "<meta http-equiv='refresh' content='" + AllTrim(Str(nIntervalo)) + "'>" + ;
         "<title>Monitor Protheus - Ortobom</title>" + ;
         "<style>body{font-family:sans-serif;margin:20px} " + ;
         "table{border-collapse:collapse;margin-bottom:24px} " + ;

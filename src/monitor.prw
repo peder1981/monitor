@@ -72,7 +72,7 @@ User Function MonitorMain()
             oResLicense := MonProcessarLicenseServer(oConfig["licenseServer"]["host"], oConfig["licenseServer"]["port"], oConfig["timeoutMs"], oState, cLogPath, oConfig["telegramBotToken"], oConfig["telegramChatId"])
         EndIf
 
-        MonSalvarDashboard(cDashboardPath, aResUnidades, aResDbaccess, oResLicense)
+        MonSalvarDashboard(cDashboardPath, aResUnidades, aResDbaccess, oResLicense, oConfig["intervaloSegundos"])
         MonSaveState(cStatePath, oState)
         Sleep(oConfig["intervaloSegundos"] * 1000)
     EndDo

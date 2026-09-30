@@ -38,7 +38,7 @@ User Function MonitorDashboardTest()
 
     // --- MonSalvarDashboard ---
     FErase(cPath)
-    ConOut("teste1_salvou=" + IIF(MonSalvarDashboard(cPath, aUnidades, {}, Nil), "SIM", "NAO"))
+    ConOut("teste1_salvou=" + IIF(MonSalvarDashboard(cPath, aUnidades, {}, Nil, 45), "SIM", "NAO"))
 
     Local oDash := JsonObject():New()
     oDash:FromJson(MemoRead(cPath))
@@ -56,6 +56,25 @@ User Function MonitorDashboardTest()
     ConOut("teste10_html_sem_dbaccess_quando_vazio=" + IIF("dbaccess" $ cHtml, "NAO", "SIM"))
     ConOut("teste11_html_sem_license_quando_ausente=" + IIF("License Server" $ cHtml, "NAO", "SIM"))
 
+    // teste16-17: auto-refresh (achado importante da revisao final) -- a
+    // pagina precisa se recarregar sozinha no intervalo configurado, via
+    // <meta http-equiv='refresh'>.
+    ConOut("teste16_html_tem_meta_refresh=" + IIF("http-equiv='refresh'" $ cHtml, "SIM", "NAO"))
+    ConOut("teste17_html_intervalo_bate=" + IIF("content='45'" $ cHtml, "SIM", "NAO"))
+
+    // teste18: sem intervalo informado (compatibilidade com chamada antiga
+    // de 4 args), cai num default sensato em vez de gerar refresh "0" (que
+    // recarregaria a pagina em loop infinito).
+    Local cPathSemIntervalo := "test_dashboard_sem_intervalo.json"
+    Local oDashSemIntervalo
+
+    FErase(cPathSemIntervalo)
+    MonSalvarDashboard(cPathSemIntervalo, aUnidades, {}, Nil)
+    oDashSemIntervalo := JsonObject():New()
+    oDashSemIntervalo:FromJson(MemoRead(cPathSemIntervalo))
+    ConOut("teste18_intervalo_default_nao_e_zero=" + IIF("content='0'" $ MonGerarDashboardHtml(oDashSemIntervalo), "NAO", "SIM"))
+    FErase(cPathSemIntervalo)
+
     // --- MonRotaDashboard: dashboard.json ausente ---
     FErase("dashboard_rota_ausente.json")
     Local aResp := MonRotaDashboard(Nil, "dashboard_rota_ausente.json")
@@ -68,6 +87,51 @@ User Function MonitorDashboardTest()
     ConOut("teste15_rota_tem_ortosp=" + IIF("ORTOSP" $ aResp2[3], "SIM", "NAO"))
 
     FErase(cPath)
+
+    // teste19-20 (achado importante da revisao final): dashboard.json
+    // corrompido (processo morto no meio da escrita) nao pode estourar
+    // excecao nem devolver lixo pro navegador -- mesma protecao que
+    // MonLoadState ja tem pra state.json.
+    Local cPathCorrompido := "test_dashboard_corrompido.json"
+
+    MemoWrite(cPathCorrompido, "{isso nao e json valido")
+    Local aRespCorrompido := MonRotaDashboard(Nil, cPathCorrompido)
+    ConOut("teste19_sentinela_corrompido=" + aRespCorrompido[1])
+    ConOut("teste20_avisa_corrompido=" + IIF("corrompido" $ aRespCorrompido[3], "SIM", "NAO"))
+    FErase(cPathCorrompido)
+
+    // teste21-24 (achado importante da revisao final): dbaccess/license
+    // preenchidos de verdade -- MonChecagemParaJson/MonChecagensParaJson
+    // nunca tinham sido exercitados por nenhum teste ate aqui.
+    Local cPathCompleto := "test_dashboard_completo.json"
+    Local aDbaccess := {}
+    Local oDbaccess1 := JsonObject():New()
+    Local oLicense := JsonObject():New()
+
+    oDbaccess1["UNIDADE"]    := "ORTOSP_DBACCESS"
+    oDbaccess1["HOST"]       := "10.0.100.62"
+    oDbaccess1["PORT"]       := 1234
+    oDbaccess1["UP"]         := .T.
+    oDbaccess1["LATENCIAMS"] := 5
+    AAdd(aDbaccess, oDbaccess1)
+
+    oLicense["UNIDADE"]    := "LICENSE_SERVER"
+    oLicense["HOST"]       := "10.0.200.98"
+    oLicense["PORT"]       := 5555
+    oLicense["UP"]         := .F.
+    oLicense["LATENCIAMS"] := 0
+
+    MonSalvarDashboard(cPathCompleto, aUnidades, aDbaccess, oLicense, 60)
+
+    Local oDashCompleto := JsonObject():New()
+    oDashCompleto:FromJson(MemoRead(cPathCompleto))
+    ConOut("teste21_dbaccess_roundtrip=" + IIF(oDashCompleto["DBACCESS"][1]["UNIDADE"] == "ORTOSP_DBACCESS", "SIM", "NAO"))
+    ConOut("teste22_license_roundtrip=" + IIF(oDashCompleto["LICENSESERVER"]["HOST"] == "10.0.200.98", "SIM", "NAO"))
+
+    Local cHtmlCompleto := MonGerarDashboardHtml(oDashCompleto)
+    ConOut("teste23_html_tem_dbaccess=" + IIF("dbaccess" $ cHtmlCompleto, "SIM", "NAO"))
+    ConOut("teste24_html_tem_license=" + IIF("License Server" $ cHtmlCompleto, "SIM", "NAO"))
+    FErase(cPathCompleto)
 
     ConOut("MONITOR_DASHBOARD_TEST_FIM")
 Return
