@@ -138,35 +138,62 @@ Servers (5)
   "SERVERS": [
     {"HOSTPORTA": "10.0.100.115:1236", "SESSOES": 11, "CONEXOES": 33,
      "USUARIOS": 25, "THREADS": 65, "MEMORIAKB": 4087092, "CPU": 37,
-     "UPTIME": "2026/09/30 03:10:02", "PID": 3259754, "STATUS": "OK"}
+     "UPTIME": "2026/09/30 03:10:02", "PID": 3259754,
+     "STATUS": "OK", "INICIOQUARENTENA": "", "MOTIVO": ""}
   ]
 }
 ```
 
-`STATUS` de cada server: `"OK"` por padrão; vira `"DESABILITADO"`,
-`"QUARENTENA"` ou `"BLOQUEADO_ESCALABILIDADE"` se a linha da tabela
-(`<tr>`) contiver, em qualquer `<td>`, a classe CSS `isDisabled`,
-`inQuarantine` ou `isBlockedByScalability` respectivamente (nomes das
-classes documentados no `<style>` da própria página do broker).
+`STATUS` de cada server é lido diretamente do **valor da coluna de
+quarentena da tabela** — confirmado contra uma segunda fixture real,
+colada pelo operador, de um broker com 9 dos 14 servers efetivamente
+em quarentena (variante "TOTVS Broker para SmartClient", mesmo produto,
+mesmo mecanismo de tabela):
 
-**Gap conhecido, não verificado (marcar como 🟡 INFERIDO na
-implementação):** a fixture colada não tem nenhum exemplo real de
-server em quarentena/desabilitado/bloqueado — a lógica de detecção da
-classe CSS é uma inferência razoável a partir do stylesheet, mas só
-fica confirmada contra o comportamento real do broker quando alguém
-observar (ou provocar) esse estado num ambiente de verdade. Documentar
-isso no README como limitação conhecida até validação.
+```
+<tr><td>(5) <a href=".../10.0.100.38:1240">10.0.100.38:1240</a></td><td>0</td><td>12:34:30</td><td>?</td><td>?</td><td>?</td><td>?</td></tr>
+```
+
+- Coluna de quarentena com valor `"-"` → `STATUS := "OK"`,
+  `INICIOQUARENTENA := ""`.
+- Qualquer outro valor (ex: `"12:34:30"`) → `STATUS := "QUARENTENA"`,
+  `INICIOQUARENTENA := <valor da coluna>`.
+- Colunas numéricas (Usuários, Threads, Memória, Cpu) viram `"?"`
+  quando o server está em quarentena — `MonParseBrokerHtml` trata
+  `"?"` como `0`/campo vazio, nunca tenta `Val("?")` direto (viraria
+  `0` por acidente do `Val()`, mas fica explícito no código pra não
+  parecer coincidência).
+
+A tabela muda de coluna a coluna entre as duas variantes do broker
+observadas ("para HTTP": `Server, Sessões, Conexões, Início
+ocorrência, Motivos, Usuários, Threads, Memória(Kb), Cpu(%/5s),
+upTime, pid`; "para SmartClient": `Server, Conexões, Quarentena,
+Usuários, Threads, Memória(Kb)*, Cpu(%/5s)`) — o nome da coluna de
+quarentena muda (`"Início ocorrência"` vs `"Quarentena"`), mas o
+mecanismo é o mesmo. `MonParseBrokerHtml` localiza a coluna certa pelo
+cabeçalho (`<th>`/primeiro `<td>` da linha de header), aceitando os
+dois nomes conhecidos — assim funciona nas duas variantes sem
+depender de qual delas a Ortobom usa em cada porta.
+
+**Gap residual (menor, documentar no README):** nenhuma fixture real
+mostrou a coluna `Motivos` preenchida (sempre `"-"` nas duas amostras)
+— o campo é capturado (`MOTIVO`) mas seu conteúdo real, quando
+existir, não foi observado. Isso não afeta a detecção de `STATUS`
+(que já está confirmada), só o texto extra opcional no alerta.
 
 ## Alerta granular por server
 
 Chave de estado: `<UNIDADE>_SERVER_<hostporta>` (ex:
 `ORTOSP_SERVER_10.0.100.62:1236`), mesmo mecanismo de
 `MonProcessarResultado` já existente (só dispara Telegram quando o
-status muda, evita spam a cada ciclo). Mensagem:
+status muda, evita spam a cada ciclo). `STATUS` é binário (`OK` ou
+`QUARENTENA` — ver seção anterior). Mensagem:
 
-- Entrou em quarentena/desabilitado/bloqueado: `[ALERTA] ORTOSP
-  server 10.0.100.62:1236 entrou em <STATUS>`
-- Voltou a `OK`: `[OK] ORTOSP server 10.0.100.62:1236 voltou a OK`
+- Entrou em quarentena: `[ALERTA] ORTOSP server 10.0.100.62:1236
+  entrou em quarentena às <INICIOQUARENTENA>` (mais `, motivo:
+  <MOTIVO>` no final se o campo vier preenchido).
+- Voltou a `OK`: `[OK] ORTOSP server 10.0.100.62:1236 saiu da
+  quarentena`
 
 ## Dashboard web
 
@@ -195,15 +222,18 @@ status muda, evita spam a cada ciclo). Mensagem:
 ## Testes
 
 - `tests/monitor_lib_test.prw`: novos testes de `MonParseBrokerHtml`
-  usando a fixture real colada nesta spec como string literal
-  (broker saudável, 5 servers, todos `OK`) — assere
-  `SESSOESATIVAS=59`, `CONEXOESATIVAS=175`, `Len(SERVERS)=5`,
-  primeiro server `HOSTPORTA="10.0.100.115:1236"`, `STATUS="OK"`.
-  Sem fixture real de server em quarentena/desabilitado disponível —
-  a lógica de detecção de classe CSS ganha um teste com HTML
-  sintético (`<tr><td class='inQuarantine'>...`) construído à mão,
-  marcado no comentário do teste como cobertura da lógica de parsing,
-  não como validação contra o broker real.
+  usando as duas fixtures reais coladas nesta spec como string
+  literal:
+  - Fixture 1 (broker "para HTTP", saudável, 5 servers, todos `OK`):
+    `SESSOESATIVAS=59`, `CONEXOESATIVAS=175`, `Len(SERVERS)=5`,
+    primeiro server `HOSTPORTA="10.0.100.115:1236"`, `STATUS="OK"`.
+  - Fixture 2 (broker "para SmartClient", 14 servers, 9 em
+    quarentena): `CONEXOESATIVAS=43`, `Len(SERVERS)=14`, servers 1-4
+    e 8 com `STATUS="OK"`, servers 5-7 e 9-14 com `STATUS="QUARENTENA"`
+    e `INICIOQUARENTENA` batendo com o horário da fixture (`"12:34:30"`
+    pro server 5, etc.), campos numéricos desses servers (`USUARIOS`,
+    `THREADS`, `MEMORIAKB`, `CPU`) vindo `0` (não erro/exceção) apesar
+    do `"?"` na fonte.
 - Testes existentes de `MonCheckWebapp`/fluxo `.ini` são removidos ou
   adaptados pro novo `MonCheckBroker` (host/porta direto, sem
   `GetPvProfString`).
@@ -223,7 +253,8 @@ status muda, evita spam a cada ciclo). Mensagem:
   funcionar). `unidades` muda de tipo (string → objeto) de forma
   consistente em todos os consumidores (`MonitorMain`, dbaccess,
   dashboard).
-- **Gap explícito:** detecção de status de server individual
-  (quarentena/desabilitado/bloqueado) é 🟡 INFERIDA do CSS, não
-  confirmada contra um caso real — documentado acima e no README como
-  limitação conhecida, não escondido.
+- **Gap explícito:** detecção de status de server individual (🟢
+  CONFIRMADA contra fixture real com 9 servers em quarentena — ver
+  seção "Checagem do broker"). Único gap residual é o conteúdo real
+  do campo `Motivos`, nunca observado preenchido — não bloqueia nada,
+  só um texto extra opcional no alerta.
