@@ -24,8 +24,9 @@ User Function MonitorTuiLibTest()
     Local oState := JsonObject():New()
     Local cTabela
 
-    MemoWrite(cConfigPath, '{"iniPath":"x.ini","intervaloSegundos":60,"timeoutMs":3000,' + ;
-                           '"portaWebapp":8090,"unidades":["TCPSP","TCPRJ"],' + ;
+    MemoWrite(cConfigPath, '{"intervaloSegundos":60,"timeoutMs":3000,' + ;
+                           '"unidades":[{"nome":"TCPSP","host":"127.0.0.1","porta":8090},' + ;
+                           '{"nome":"TCPRJ","host":"127.0.0.1","porta":8090}],' + ;
                            '"portaDbaccess":1234,"licenseServer":{"host":"10.0.0.1","port":5555}}')
     oConfig := MonLoadConfig(cConfigPath)
 

@@ -41,17 +41,19 @@ User Function MonitorLibTest()
     ConOut("teste10_log_tem_linha_dois=" + IIF("linha dois" $ cConteudoLog, "SIM", "NAO"))
     FErase(cLogPath)
 
-    MemoWrite(cConfigPath, '{"iniPath":"C:\\totvs\\appserver.ini","intervaloSegundos":60,' + ;
+    MemoWrite(cConfigPath, '{"intervaloSegundos":60,' + ;
                            '"timeoutMs":3000,"telegramBotToken":"TOKEN123",' + ;
-                           '"telegramChatId":"CHAT123","unidades":["TCPSP","TCPRJ"]}')
+                           '"telegramChatId":"CHAT123","unidades":' + ;
+                           '[{"nome":"TCPSP","host":"127.0.0.1","porta":8090},' + ;
+                           '{"nome":"TCPRJ","host":"127.0.0.1","porta":8090}]}')
     oConfig := MonLoadConfig(cConfigPath)
-    ConOut("teste11_inipath=" + oConfig["iniPath"])
     ConOut("teste12_intervalo=" + Str(oConfig["intervaloSegundos"]))
 
     aUnidades := MonGetUnidades(oConfig)
     ConOut("teste13_qtd_unidades=" + Str(Len(aUnidades)))
-    ConOut("teste14_unidade1=" + aUnidades[1])
-    ConOut("teste15_unidade2=" + aUnidades[2])
+    ConOut("teste14_unidade1_nome=" + aUnidades[1]["nome"])
+    ConOut("teste14b_unidade1_host=" + aUnidades[1]["host"])
+    ConOut("teste15_unidade2_nome=" + aUnidades[2]["nome"])
     FErase(cConfigPath)
 
     ConOut("teste16_config_ausente=" + IIF(MonLoadConfig("nao_existe.json") == Nil, "SIM", "NAO"))
@@ -62,7 +64,7 @@ User Function MonitorLibTest()
     FErase(cConfigPath)
 
     cConfigPath := "test_config_sem_unidades.json"
-    MemoWrite(cConfigPath, '{"iniPath":"C:\\totvs\\appserver.ini","intervaloSegundos":60}')
+    MemoWrite(cConfigPath, '{"intervaloSegundos":60}')
     oConfig := MonLoadConfig(cConfigPath)
     aUnidades := MonGetUnidades(oConfig)
     ConOut("teste18_unidades_chave_ausente=" + IIF(Len(aUnidades) == 0, "SIM", "NAO"))

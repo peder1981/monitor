@@ -12,7 +12,7 @@ User Function MonTuiMontarTabela(oConfig, oState)
     Local i
 
     For i := 1 To Len(aUnidades)
-        cUnidade := aUnidades[i]
+        cUnidade := aUnidades[i]["nome"]
         cCorpo += MonTuiLinhaStatus(cUnidade, MonGetStatusAnterior(oState, cUnidade), MonGetLatenciaAnterior(oState, cUnidade)) + Chr(10)
 
         If oConfig:HasProperty("portaDbaccess")
