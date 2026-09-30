@@ -117,8 +117,10 @@ User Function MonProcessarResultado(cChave, cRotulo, oRes, oState, cLogPath, cTo
     If cStatusNovo != cStatusAnterior
         If cStatusAnterior != "DESCONHECIDO" .Or. cStatusNovo == "DOWN"
             cMsg := MonMontarMensagem(cRotulo, oRes["HOST"], oRes["PORT"], cStatusNovo)
-            If !MonNotificarTelegram(cToken, cChatId, cMsg)
-                MonLog(cLogPath, cChave + " falha ao notificar telegram")
+            If MonNotificarTelegram(cToken, cChatId, cMsg)
+                MonLog(cLogPath, cChave + " notificou telegram com sucesso")
+            Else
+                MonLog(cLogPath, cChave + " falha ao notificar telegram (http=" + AllTrim(Str(FWHttpStatus())) + " erro=" + FWHttpError() + ")")
             EndIf
         EndIf
     EndIf

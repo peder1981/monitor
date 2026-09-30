@@ -123,6 +123,14 @@ User Function MonitorLibTest()
     Local cLogTxt6 := MemoRead(cLog6)
     ConOut("teste38_dbaccess_log_tem_rotulo=" + IIF("TCPSP_DBACCESS" $ cLogTxt6, "SIM", "NAO"))
 
+    // teste38b (achado do operador em campo): a linha de falha precisa
+    // trazer o status HTTP/erro real da tentativa, nao so "falha" seco --
+    // e o que distingue "token invalido" (chega no Telegram, HTTP 401/403)
+    // de "rede bloqueada" (nunca chega, FWHttpError() com mensagem de
+    // timeout/conexao) quando o operador precisar provar pro time de
+    // infra que o bloqueio e de rede, nao do monitor.
+    ConOut("teste38b_log_tem_detalhe_http=" + IIF("http=" $ cLogTxt6, "SIM", "NAO"))
+
     // unidade "irma" (mesmo host, dbaccess up) nao deve mexer no estado da TCPSP
     MonProcessarDbaccess("TCPRJ", "127.0.0.1", 19191, 500, oState6, cLog6, "TOKEN_FAKE", "0")
     ConOut("teste39_dbaccess_unidades_independentes=" + MonGetStatusAnterior(oState6, "TCPRJ_DBACCESS") + "/" + MonGetStatusAnterior(oState6, "TCPSP_DBACCESS"))

@@ -427,8 +427,10 @@ User Function MonProcessarServidorBroker(cUnidade, oServ, oState, cLogPath, cTok
     If cStatusNovo != cStatusAnterior
         If cStatusAnterior != "DESCONHECIDO" .Or. cStatusNovo != "OK"
             cMsg := MonMontarMensagemServer(cUnidade, oServ["HOSTPORTA"], cStatusNovo, oServ["INICIOQUARENTENA"], oServ["MOTIVO"])
-            If !MonNotificarTelegram(cToken, cChatId, cMsg)
-                MonLog(cLogPath, cChave + " falha ao notificar telegram")
+            If MonNotificarTelegram(cToken, cChatId, cMsg)
+                MonLog(cLogPath, cChave + " notificou telegram com sucesso")
+            Else
+                MonLog(cLogPath, cChave + " falha ao notificar telegram (http=" + AllTrim(Str(FWHttpStatus())) + " erro=" + FWHttpError() + ")")
             EndIf
         EndIf
     EndIf
