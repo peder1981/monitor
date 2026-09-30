@@ -1,13 +1,24 @@
 {
-  "iniPath": "C:\\totvs\\appserver.ini",
+  "unidades": [
+    {"nome": "ORTOSP", "host": "10.0.100.62", "porta": 8090},
+    {"nome": "ORTORJ", "host": "10.0.100.53", "porta": 8090},
+    {"nome": "ORTOMG", "host": "10.0.100.64", "porta": 8090},
+    {"nome": "ORTOGO", "host": "10.0.100.85", "porta": 8090},
+    {"nome": "ORTOMT", "host": "10.0.100.26", "porta": 8090},
+    {"nome": "ORTOBA", "host": "10.0.100.67", "porta": 8090},
+    {"nome": "ORTOPE", "host": "10.0.100.58", "porta": 8090},
+    {"nome": "ORTOCE", "host": "10.0.100.59", "porta": 8090},
+    {"nome": "ORTOPR", "host": "10.0.100.60", "porta": 8090},
+    {"nome": "ORTOPA", "host": "10.0.100.61", "porta": 8090},
+    {"nome": "ORTORS", "host": "10.0.100.115", "porta": 8090},
+    {"nome": "ORTOAF", "host": "10.0.100.54", "porta": 8090},
+    {"nome": "ORTOAM", "host": "10.0.100.36", "porta": 8090}
+  ],
   "intervaloSegundos": 60,
   "timeoutMs": 3000,
-  "portaWebapp": 8090,
+  "dashboardPorta": 9099,
   "telegramBotToken": "COLOQUE_O_TOKEN_DO_BOT_AQUI",
   "telegramChatId": "COLOQUE_O_CHAT_ID_AQUI",
-  "unidades": ["TCPSP", "TCPRJ", "TCPMG", "TCPGO", "TCPMT", "TCPBA",
-               "TCPPE", "TCPCE", "TCPPR", "TCPPA", "TCPRS", "TCPAM",
-               "TCPFB", "TCPAF", "TCPOF"],
   "portaDbaccess": 1234,
   "licenseServer": {"host": "10.0.200.98", "port": 5555}
 }
