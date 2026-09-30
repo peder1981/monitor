@@ -89,6 +89,10 @@ User Function MonitorBrokerTest()
     ConOut("testeCheck2_port=" + Str(oCheck["PORT"]))
     ConOut("testeCheck3_up_falso_no_broker=" + IIF(oCheck["UP"], "NAO", "SIM"))
     ConOut("testeCheck4_latencia_nao_negativa=" + IIF(oCheck["LATENCIAMS"] >= 0, "SIM", "NAO"))
+    ConOut("testeCheck4b_endpoint_default_no_resultado=" + oCheck["ENDPOINT"])
+
+    Local oCheckEndpointCustom := MonCheckBroker("TESTEBROKER", "127.0.0.1", 19191, 2000, "/totvs_broker_query/status")
+    ConOut("testeCheck4c_endpoint_customizado_no_resultado=" + oCheckEndpointCustom["ENDPOINT"])
 
     // porta 19194: ninguem escuta -- down de verdade
     oCheck := MonCheckBroker("TESTEBROKER", "127.0.0.1", 19194, 500)
@@ -111,6 +115,9 @@ User Function MonitorBrokerTest()
     oResUnid := MonProcessarUnidade("TCPX", "127.0.0.1", 19194, 500, oState2, cLog2, cTokenFake, cChatFake)
     ConOut("testePU1_status_apos_1a_passagem=" + MonGetStatusAnterior(oState2, "TCPX"))
     ConOut("testePU2_retorna_oRes=" + IIF(oResUnid["UNIDADE"] == "TCPX", "SIM", "NAO"))
+
+    Local oResUnidEndpoint := MonProcessarUnidade("TCPX", "127.0.0.1", 19194, 500, oState2, cLog2, cTokenFake, cChatFake, "/totvs_broker_query/status")
+    ConOut("testePU2b_endpoint_propaga=" + oResUnidEndpoint["ENDPOINT"])
 
     Local cLogTxt := MemoRead(cLog2)
     MonProcessarUnidade("TCPX", "127.0.0.1", 19194, 500, oState2, cLog2, cTokenFake, cChatFake)
@@ -308,6 +315,18 @@ User Function MonitorBrokerTest()
     ConOut("testeServD1_status=" + MonGetStatusAnterior(oState5, "ORTOSP_SERVER_10.0.100.62:1236"))
     ConOut("testeServD2_notificou=" + IIF("falha ao notificar telegram" $ MemoRead(cLog5), "SIM", "NAO"))
     FErase(cLog5)
+
+    // achado do operador em campo: bases na build 12.1.2310 so expoem o
+    // broker num endpoint diferente (/totvs_broker_query/status em vez
+    // de /totvs_broker_query) -- precisa ser configuravel por unidade.
+    ConOut("testeUrl1_endpoint_default=" + MonMontarUrlBroker("10.0.100.62", 8090, Nil))
+    ConOut("testeUrl2_endpoint_vazio_usa_default=" + MonMontarUrlBroker("10.0.100.62", 8090, ""))
+    ConOut("testeUrl3_endpoint_customizado=" + MonMontarUrlBroker("10.0.100.37", 4000, "/totvs_broker_query/status"))
+
+    // MonCheckBroker continua funcionando sem o 5o argumento (chamada
+    // antiga de 4 args, como em testeCheck1-8 acima) -- compatibilidade.
+    Local oCheckSemEndpoint := MonCheckBroker("TESTEBROKER", "127.0.0.1", 19194, 500)
+    ConOut("testeUrl4_sem_endpoint_nao_quebra=" + IIF(oCheckSemEndpoint["UP"], "NAO", "SIM"))
 
     ConOut("MONITOR_BROKER_TEST_FIM")
 Return

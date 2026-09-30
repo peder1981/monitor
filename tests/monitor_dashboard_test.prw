@@ -23,6 +23,7 @@ User Function MonitorDashboardTest()
     oU1["SESSOESATIVAS"]   := 59
     oU1["CONEXOESATIVAS"]  := 175
     oU1["SERVERS"]         := aServs
+    oU1["ENDPOINT"]        := "/totvs_broker_query"
 
     oU2["UNIDADE"]         := "ORTORJ"
     oU2["HOST"]            := "10.0.100.53"
@@ -32,6 +33,7 @@ User Function MonitorDashboardTest()
     oU2["SESSOESATIVAS"]   := 0
     oU2["CONEXOESATIVAS"]  := 0
     oU2["SERVERS"]         := {}
+    oU2["ENDPOINT"]        := "/totvs_broker_query/status"
 
     AAdd(aUnidades, oU1)
     AAdd(aUnidades, oU2)
@@ -59,6 +61,18 @@ User Function MonitorDashboardTest()
     // teste11b: link pra pagina de edicao de unidades (achado do
     // operador em campo: quer editar hosts/portas pelo proprio dashboard).
     ConOut("teste11b_html_tem_link_config=" + IIF("/config" $ cHtml, "SIM", "NAO"))
+
+    // teste11c-f (achado do operador em campo: quer clicar no dashboard
+    // e abrir a pagina do broker de verdade). Link da unidade usa o
+    // ENDPOINT configurado dela (inclusive o customizado da build
+    // 12.1.2310, "/totvs_broker_query/status"); link do server individual
+    // usa o padrao real observado nas fixtures (TOTVS_BROKER_QUERY/
+    // ServerStatus/<hostporta do server>), sempre sob o host:porta da
+    // UNIDADE (o broker, nao o server).
+    ConOut("teste11c_link_unidade_endpoint_padrao=" + IIF("href='http://10.0.100.62:8090/totvs_broker_query'" $ cHtml, "SIM", "NAO"))
+    ConOut("teste11d_link_unidade_endpoint_customizado=" + IIF("href='http://10.0.100.53:8090/totvs_broker_query/status'" $ cHtml, "SIM", "NAO"))
+    ConOut("teste11e_link_server_individual=" + IIF("href='http://10.0.100.62:8090/TOTVS_BROKER_QUERY/ServerStatus/10.0.100.62:1236'" $ cHtml, "SIM", "NAO"))
+    ConOut("teste11f_links_abrem_em_nova_aba=" + IIF("target='_blank'" $ cHtml, "SIM", "NAO"))
 
     // teste16-17: auto-refresh (achado importante da revisao final) -- a
     // pagina precisa se recarregar sozinha no intervalo configurado, via

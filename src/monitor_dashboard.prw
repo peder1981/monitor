@@ -55,6 +55,7 @@ User Function MonUnidadesParaJson(aUnidades)
         cJson += '"LATENCIAMS":' + AllTrim(Str(oU["LATENCIAMS"])) + ','
         cJson += '"SESSOESATIVAS":' + AllTrim(Str(oU["SESSOESATIVAS"])) + ','
         cJson += '"CONEXOESATIVAS":' + AllTrim(Str(oU["CONEXOESATIVAS"])) + ','
+        cJson += '"ENDPOINT":"' + MonJsonEscape(IIF(oU:HasProperty("ENDPOINT"), oU["ENDPOINT"], "/totvs_broker_query")) + '",'
         cJson += '"SERVERS":' + MonServersParaJson(oU["SERVERS"]) + '}'
     Next
     cJson += "]"
@@ -106,6 +107,24 @@ User Function MonSalvarDashboard(cPath, aUnidadesRes, aDbaccessRes, oLicenseRes,
     cJson += "}"
 Return MemoWrite(cPath, cJson)
 
+// Achado do operador em campo: quer clicar no host:porta do dashboard e
+// abrir a pagina de verdade do broker no navegador, pra olhar detalhe
+// sem precisar digitar a URL na mao. Usa o ENDPOINT configurado da
+// propria unidade (inclusive o customizado das bases em build antiga,
+// ver monitor_broker.prw:MonMontarUrlBroker) -- link tem que bater com
+// o que o monitor realmente checa, nao um caminho fixo.
+User Function MonUrlPaginaBroker(oU)
+    Local cEndpoint := IIF(oU:HasProperty("ENDPOINT") .And. oU["ENDPOINT"] != "", oU["ENDPOINT"], "/totvs_broker_query")
+Return "http://" + oU["HOST"] + ":" + AllTrim(Str(oU["PORT"])) + cEndpoint
+
+// Pagina de detalhe de um server individual da tabela do broker --
+// padrao real observado nas fixtures (ver tests/fixtures/broker_http_ok.
+// html): /TOTVS_BROKER_QUERY/ServerStatus/<hostporta do server>, sempre
+// sob o host:porta da UNIDADE (o broker que responde), nao do server em
+// si.
+User Function MonUrlPaginaServer(oU, oS)
+Return "http://" + oU["HOST"] + ":" + AllTrim(Str(oU["PORT"])) + "/TOTVS_BROKER_QUERY/ServerStatus/" + oS["HOSTPORTA"]
+
 User Function MonLinhaChecagem(cNome, cHost, nPort, lUp, nLatenciaMs)
     Local cHtml := "<tr class='" + IIF(lUp, "up", "down") + "'>"
 
@@ -145,7 +164,7 @@ User Function MonGerarDashboardHtml(oDash)
         oU := aUnidades[i]
         cHtml += "<tr class='" + IIF(oU["UP"], "up", "down") + "'>"
         cHtml += "<td>" + oU["UNIDADE"] + "</td>"
-        cHtml += "<td>" + oU["HOST"] + ":" + AllTrim(Str(oU["PORT"])) + "</td>"
+        cHtml += "<td><a href='" + MonUrlPaginaBroker(oU) + "' target='_blank'>" + oU["HOST"] + ":" + AllTrim(Str(oU["PORT"])) + "</a></td>"
         cHtml += "<td>" + IIF(oU["UP"], "UP", "DOWN") + "</td>"
         cHtml += "<td>" + AllTrim(Str(Round(oU["LATENCIAMS"], 0))) + "</td>"
         cHtml += "<td>" + AllTrim(Str(oU["SESSOESATIVAS"])) + "</td>"
@@ -163,7 +182,7 @@ User Function MonGerarDashboardHtml(oDash)
             For j := 1 To Len(oU["SERVERS"])
                 oS := oU["SERVERS"][j]
                 cHtml += "<tr class='" + IIF(oS["STATUS"] == "OK", "up", "down") + "'>"
-                cHtml += "<td>" + oS["HOSTPORTA"] + "</td>"
+                cHtml += "<td><a href='" + MonUrlPaginaServer(oU, oS) + "' target='_blank'>" + oS["HOSTPORTA"] + "</a></td>"
                 cHtml += "<td>" + oS["STATUS"] + "</td>"
                 cHtml += "<td>" + AllTrim(Str(oS["USUARIOS"])) + "</td>"
                 cHtml += "<td>" + AllTrim(Str(oS["MEMORIAKB"])) + "</td>"

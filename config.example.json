@@ -20,6 +20,6 @@
   "dashboardSenha": "COLOQUE_UMA_SENHA_AQUI",
   "telegramBotToken": "COLOQUE_O_TOKEN_DO_BOT_AQUI",
   "telegramChatId": "COLOQUE_O_CHAT_ID_AQUI",
-  "portaDbaccess": 1234,
+  "portaDbaccess": 7890,
   "licenseServer": {"host": "10.0.200.98", "port": 5555}
 }

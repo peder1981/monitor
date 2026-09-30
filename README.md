@@ -71,7 +71,14 @@ e preencha:
   alertas (livre, sem precisar bater com nada externo); `host`/`porta`
   apontam direto pro TOTVS Broker daquela unidade. Adicionar, remover ou
   mudar IP/porta de uma unidade é só editar essa lista — não depende de
-  nenhum `.ini` de conexão do SmartClient.
+  nenhum `.ini` de conexão do SmartClient. Cada unidade aceita também um
+  `"endpoint"` opcional (ex: `"/totvs_broker_query/status"`) pra quando o
+  broker daquela unidade expõe o status num caminho diferente do padrão
+  `/totvs_broker_query` — achado de campo: bases em build mais antiga
+  (ex: 12.1.2310) usam esse caminho alternativo. Sem essa chave, usa o
+  padrão. **Esse campo só pode ser editado direto no `config.json`** — o
+  formulário de edição pelo dashboard web (ver "Editar unidades pelo
+  dashboard" abaixo) só mexe em nome/host/porta.
 - `telegramBotToken` / `telegramChatId`: credenciais do bot do Telegram
   que vai mandar os alertas.
 - `intervaloSegundos` / `timeoutMs`: frequência da checagem e timeout

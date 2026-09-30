@@ -369,7 +369,16 @@ User Function MonParseBrokerResposta(cBody)
     EndIf
 Return MonParseBrokerHtml(cBody)
 
-User Function MonCheckBroker(cUnidade, cHost, nPorta, nTimeoutMs)
+// Achado do operador em campo: bases em build antiga (12.1.2310) so
+// expoem o broker num caminho diferente do padrao
+// (/totvs_broker_query/status, nao /totvs_broker_query) -- cEndpoint e
+// opcional (Nil ou "" cai no caminho padrao), configuravel por unidade
+// via a chave "endpoint" no config.json.
+User Function MonMontarUrlBroker(cHost, nPorta, cEndpoint)
+    Local cCaminho := IIF(cEndpoint == Nil .Or. cEndpoint == "", "/totvs_broker_query", cEndpoint)
+Return "http://" + cHost + ":" + AllTrim(Str(nPorta)) + cCaminho
+
+User Function MonCheckBroker(cUnidade, cHost, nPorta, nTimeoutMs, cEndpoint)
     Local oRes := JsonObject():New()
     Local nT1
     Local nStatus
@@ -377,13 +386,14 @@ User Function MonCheckBroker(cUnidade, cHost, nPorta, nTimeoutMs)
     Local oParsed
     Local lHttpOk
 
-    oRes["UNIDADE"] := cUnidade
-    oRes["HOST"]    := cHost
-    oRes["PORT"]    := nPorta
+    oRes["UNIDADE"]  := cUnidade
+    oRes["HOST"]     := cHost
+    oRes["PORT"]     := nPorta
+    oRes["ENDPOINT"] := IIF(cEndpoint == Nil .Or. cEndpoint == "", "/totvs_broker_query", cEndpoint)
 
     FWHttpTimeout(Max(1, Int((nTimeoutMs + 999) / 1000)))
     nT1 := TimeCounter()
-    nStatus := FWHttpGet("http://" + cHost + ":" + AllTrim(Str(nPorta)) + "/totvs_broker_query")
+    nStatus := FWHttpGet(MonMontarUrlBroker(cHost, nPorta, cEndpoint))
     oRes["LATENCIAMS"] := TimeCounter() - nT1
     cBody := FWHttpBody()
 
@@ -446,12 +456,12 @@ User Function MonProcessarServersBroker(cUnidade, aServers, oState, cLogPath, cT
     Next
 Return Nil
 
-User Function MonProcessarUnidade(cUnidade, cHost, nPorta, nTimeoutMs, oState, cLogPath, cToken, cChatId)
+User Function MonProcessarUnidade(cUnidade, cHost, nPorta, nTimeoutMs, oState, cLogPath, cToken, cChatId, cEndpoint)
     Local oRes
     Local e
 
     Try
-        oRes := MonCheckBroker(cUnidade, cHost, nPorta, nTimeoutMs)
+        oRes := MonCheckBroker(cUnidade, cHost, nPorta, nTimeoutMs, cEndpoint)
         MonProcessarResultado(cUnidade, cUnidade, oRes, oState, cLogPath, cToken, cChatId)
         MonProcessarServersBroker(cUnidade, oRes["SERVERS"], oState, cLogPath, cToken, cChatId)
     Catch e

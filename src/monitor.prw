@@ -56,7 +56,7 @@ User Function MonitorMain()
         oResLicense  := Nil
 
         For i := 1 To Len(aUnidades)
-            oResUnidade := MonProcessarUnidade(aUnidades[i]["nome"], aUnidades[i]["host"], aUnidades[i]["porta"], oConfig["timeoutMs"], oState, cLogPath, oConfig["telegramBotToken"], oConfig["telegramChatId"])
+            oResUnidade := MonProcessarUnidade(aUnidades[i]["nome"], aUnidades[i]["host"], aUnidades[i]["porta"], oConfig["timeoutMs"], oState, cLogPath, oConfig["telegramBotToken"], oConfig["telegramChatId"], IIF(aUnidades[i]:HasProperty("endpoint"), aUnidades[i]["endpoint"], Nil))
             AAdd(aResUnidades, oResUnidade)
 
             If oConfig:HasProperty("portaDbaccess")
