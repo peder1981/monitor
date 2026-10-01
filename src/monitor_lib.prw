@@ -1,5 +1,61 @@
 // Monitor library - checagem HTTP/TCP e controle de estado
 
+// CSS compartilhado pelas 3 paginas do dashboard web (status, /config,
+// /analise) -- centralizado aqui (primeiro include de monitor.prw) pra
+// nao duplicar estilo em cada gerador de HTML. Sem fonte/CDN externo de
+// proposito: o dashboard roda numa rede interna (10.0.100.x) sem
+// garantia de saida pra internet.
+User Function MonCssBase()
+Return ":root{--bg:#f4f6f8;--card:#fff;--text:#1f2a37;--muted:#64748b;" + ;
+    "--border:#e2e8f0;--accent:#2563eb;--up:#16a34a;--up-bg:#dcfce7;" + ;
+    "--down:#dc2626;--down-bg:#fee2e2;--warn:#d97706;--warn-bg:#fef3c7;" + ;
+    "--off:#6b7280;--off-bg:#f1f5f9}" + ;
+    "*{box-sizing:border-box}" + ;
+    "body{margin:0;font-family:-apple-system,'Segoe UI',Roboto,Arial,sans-serif;background:var(--bg);color:var(--text)}" + ;
+    "header.topbar{background:#111827;color:#fff;padding:16px 24px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px}" + ;
+    "header.topbar h1{margin:0;font-size:1.25rem;font-weight:600}" + ;
+    "header.topbar nav a{color:#cbd5e1;text-decoration:none;margin-left:16px;font-size:0.9rem}" + ;
+    "header.topbar nav a:hover{color:#fff}" + ;
+    "main{padding:24px;max-width:1100px;margin:0 auto}" + ;
+    ".card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:20px;margin-bottom:24px;box-shadow:0 1px 2px rgba(0,0,0,.04)}" + ;
+    ".card h2{margin-top:0;font-size:1.05rem}" + ;
+    "table{width:100%;border-collapse:collapse;font-size:0.9rem}" + ;
+    "th{text-align:left;padding:8px 12px;color:var(--muted);font-weight:600;border-bottom:2px solid var(--border);white-space:nowrap}" + ;
+    "td{padding:8px 12px;border-bottom:1px solid var(--border)}" + ;
+    "tr:last-child td{border-bottom:none}" + ;
+    "tr:hover td{background:#f8fafc}" + ;
+    ".badge{display:inline-block;padding:2px 10px;border-radius:999px;font-size:0.78rem;font-weight:600;white-space:nowrap}" + ;
+    ".badge-up,.badge-ok{background:var(--up-bg);color:var(--up)}" + ;
+    ".badge-down{background:var(--down-bg);color:var(--down)}" + ;
+    ".badge-quarentena{background:var(--warn-bg);color:var(--warn)}" + ;
+    ".badge-desabilitado,.badge-off{background:var(--off-bg);color:var(--off)}" + ;
+    ".meta{color:var(--muted);font-size:0.85rem;margin-bottom:16px}" + ;
+    ".msg{padding:12px 16px;margin-bottom:20px;background:var(--warn-bg);border:1px solid #fcd34d;border-radius:8px;color:#78350f}" + ;
+    ".empty{color:var(--muted);font-style:italic}" + ;
+    "a{color:var(--accent)}" + ;
+    "code{background:#eef2f7;padding:1px 6px;border-radius:4px;font-size:0.85em}" + ;
+    "textarea{width:100%;min-height:280px;font-family:ui-monospace,Consolas,monospace;font-size:13px;padding:10px;border:1px solid var(--border);border-radius:8px}" + ;
+    "input[type=password]{padding:8px 10px;border:1px solid var(--border);border-radius:6px}" + ;
+    "button{padding:8px 18px;border:none;border-radius:6px;background:var(--accent);color:#fff;font-weight:600;cursor:pointer}" + ;
+    "button:disabled{background:#94a3b8;cursor:not-allowed}" + ;
+    "@media(max-width:640px){main{padding:12px}header.topbar{padding:12px 16px}}"
+
+// Badge de status -- usado nas 3 paginas pra UP/DOWN/OK/QUARENTENA/
+// DESABILITADO em vez de pintar a linha inteira da tabela.
+User Function MonBadge(cStatus)
+    Local cClasse := "badge-off"
+
+    If cStatus == "UP" .Or. cStatus == "OK"
+        cClasse := IIF(cStatus == "UP", "badge-up", "badge-ok")
+    ElseIf cStatus == "DOWN"
+        cClasse := "badge-down"
+    ElseIf cStatus == "QUARENTENA"
+        cClasse := "badge-quarentena"
+    ElseIf cStatus == "DESABILITADO"
+        cClasse := "badge-desabilitado"
+    EndIf
+Return "<span class='badge " + cClasse + "'>" + cStatus + "</span>"
+
 User Function MonLoadState(cStatePath)
     Local oState := JsonObject():New()
     Local cTxt   := MemoRead(cStatePath)

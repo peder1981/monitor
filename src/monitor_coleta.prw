@@ -1,3 +1,5 @@
+#include "monitor_lib.prw"
+
 // Coleta historica (CSV) -- substitui nativamente o coletor Python em
 // anexo: uma linha por server por amostra, append-only, um arquivo por
 // dia. Serve de base para decisao de capacidade (pico por faixa/dia da
@@ -278,43 +280,46 @@ Return aResultado
 
 User Function MonGerarAnaliseHtml(aPicos, aMem, nDias)
     Local cHtml := "<!doctype html><html><head><meta charset='utf-8'>" + ;
+        "<meta name='viewport' content='width=device-width,initial-scale=1'>" + ;
         "<title>Monitor Protheus - Analise historica</title>" + ;
-        "<style>body{font-family:sans-serif;margin:20px} " + ;
-        "table{border-collapse:collapse;margin-bottom:24px} " + ;
-        "td,th{border:1px solid #ccc;padding:4px 10px;text-align:left}</style>" + ;
+        "<style>" + MonCssBase() + "</style>" + ;
         "</head><body>"
     Local i
 
-    cHtml += "<h1>Analise historica</h1><p><a href='/'>Voltar</a></p>"
-    cHtml += "<p>Base: ultimos " + AllTrim(Str(nDias)) + " dia(s) de coleta.</p>"
+    cHtml += "<header class='topbar'><h1>Analise historica</h1>" + ;
+        "<nav><a href='/'>&larr; voltar pro dashboard</a></nav></header>"
+    cHtml += "<main>"
+    cHtml += "<p class='meta'>Base: ultimos " + AllTrim(Str(nDias)) + " dia(s) de coleta.</p>"
 
-    cHtml += "<h2>Pico de usuarios por faixa de horario</h2>"
+    cHtml += "<div class='card'><h2>Pico de usuarios por faixa de horario</h2>"
     If Len(aPicos) == 0
-        cHtml += "<p>Sem dados ainda -- aguarde a coleta acumular amostras.</p>"
+        cHtml += "<p class='empty'>Sem dados ainda -- aguarde a coleta acumular amostras.</p>"
     Else
         cHtml += "<table><tr><th>Unidade</th><th>Faixa</th><th>Pico (max)</th><th>P95</th></tr>"
         For i := 1 To Len(aPicos)
-            cHtml += "<tr><td>" + aPicos[i]["UNIDADE"] + "</td><td>" + aPicos[i]["FAIXA"] + "</td>" + ;
+            cHtml += "<tr><td><b>" + aPicos[i]["UNIDADE"] + "</b></td><td>" + aPicos[i]["FAIXA"] + "</td>" + ;
                 "<td>" + AllTrim(Str(aPicos[i]["P"])) + "</td>" + ;
                 "<td>" + AllTrim(Str(Round(aPicos[i]["P95"], 1))) + "</td></tr>"
         Next
         cHtml += "</table>"
     EndIf
+    cHtml += "</div>"
 
-    cHtml += "<h2>Memoria por unidade (regressao linear)</h2>"
+    cHtml += "<div class='card'><h2>Memoria por unidade (regressao linear)</h2>"
     If Len(aMem) == 0
-        cHtml += "<p>Sem dados ainda -- aguarde a coleta acumular amostras.</p>"
+        cHtml += "<p class='empty'>Sem dados ainda -- aguarde a coleta acumular amostras.</p>"
     Else
         cHtml += "<table><tr><th>Unidade</th><th>Base (MB)</th><th>MB por usuario</th></tr>"
         For i := 1 To Len(aMem)
-            cHtml += "<tr><td>" + aMem[i]["UNIDADE"] + "</td>" + ;
+            cHtml += "<tr><td><b>" + aMem[i]["UNIDADE"] + "</b></td>" + ;
                 "<td>" + AllTrim(Str(Round(aMem[i]["BASE_MB"], 0))) + "</td>" + ;
                 "<td>" + AllTrim(Str(Round(aMem[i]["MB_POR_USUARIO"], 1))) + "</td></tr>"
         Next
         cHtml += "</table>"
     EndIf
+    cHtml += "</div>"
 
-    cHtml += "</body></html>"
+    cHtml += "</main></body></html>"
 Return cHtml
 
 // nDiasPadrao fixo em 30: dashboard nao tem UI pra escolher range (ponytail

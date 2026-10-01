@@ -1,3 +1,4 @@
+#include "../src/monitor_lib.prw"
 #include "../src/monitor_coleta.prw"
 
 Static Function MonTesteServ(cHostPorta, cStatus, nUsuarios, nMemKb, nCpu)
@@ -72,6 +73,13 @@ User Function MonitorColetaTest()
         ConOut("teste14_base_mb=" + AllTrim(Str(Round(aMem[1]["BASE_MB"], 1))))
         ConOut("teste15_mb_por_usuario=" + AllTrim(Str(Round(aMem[1]["MB_POR_USUARIO"], 1))))
     EndIf
+
+    // teste16: MonGerarAnaliseHtml nao pode quebrar (ja pegou regressao real
+    // de link: MonCssBase/MonBadge vivem em monitor_lib.prw e precisam estar
+    // incluidos por quem gera a pagina).
+    Local cHtmlAnalise := MonGerarAnaliseHtml(aPicos, aMem, 30)
+    ConOut("teste16_html_tem_titulo=" + IIF("Analise historica" $ cHtmlAnalise, "SIM", "NAO"))
+    ConOut("teste17_html_tem_unidade=" + IIF("TCPSP" $ cHtmlAnalise, "SIM", "NAO"))
 
     FErase(cArqAnalise)
     ConOut("MONITOR_COLETA_TEST_FIM")

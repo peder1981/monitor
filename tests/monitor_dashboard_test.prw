@@ -1,3 +1,4 @@
+#include "../src/monitor_lib.prw"
 #include "../src/monitor_dashboard.prw"
 
 User Function MonitorDashboardTest()

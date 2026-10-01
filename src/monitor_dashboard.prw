@@ -1,3 +1,5 @@
+#include "monitor_lib.prw"
+
 // Dashboard web consolidado -- servido pelo proprio MonitorService via
 // WSRestServer (nativa disponivel a partir do ADVPP v4.2.0, que devolve
 // HTML cru via Return {"__RAW_HTTP__", cContentType, cBody}). A rota HTTP
@@ -126,11 +128,11 @@ User Function MonUrlPaginaServer(oU, oS)
 Return "http://" + oU["HOST"] + ":" + AllTrim(Str(oU["PORT"])) + "/TOTVS_BROKER_QUERY/ServerStatus/" + oS["HOSTPORTA"]
 
 User Function MonLinhaChecagem(cNome, cHost, nPort, lUp, nLatenciaMs)
-    Local cHtml := "<tr class='" + IIF(lUp, "up", "down") + "'>"
+    Local cHtml := "<tr>"
 
     cHtml += "<td>" + cNome + "</td>"
     cHtml += "<td>" + cHost + ":" + AllTrim(Str(nPort)) + "</td>"
-    cHtml += "<td>" + IIF(lUp, "UP", "DOWN") + "</td>"
+    cHtml += "<td>" + MonBadge(IIF(lUp, "UP", "DOWN")) + "</td>"
     cHtml += "<td>" + AllTrim(Str(Round(nLatenciaMs, 0))) + "</td>"
     cHtml += "</tr>"
 Return cHtml
@@ -138,79 +140,86 @@ Return cHtml
 User Function MonGerarDashboardHtml(oDash)
     Local nIntervalo := IIF(oDash:HasProperty("INTERVALOSEGUNDOS") .And. oDash["INTERVALOSEGUNDOS"] > 0, oDash["INTERVALOSEGUNDOS"], 30)
     Local cHtml := "<!doctype html><html><head><meta charset='utf-8'>" + ;
+        "<meta name='viewport' content='width=device-width,initial-scale=1'>" + ;
         "<meta http-equiv='refresh' content='" + AllTrim(Str(nIntervalo)) + "'>" + ;
         "<title>Monitor Protheus - Ortobom</title>" + ;
-        "<style>body{font-family:sans-serif;margin:20px} " + ;
-        "table{border-collapse:collapse;margin-bottom:24px} " + ;
-        "td,th{border:1px solid #ccc;padding:4px 10px;text-align:left} " + ;
-        "tr.up{background:#e6ffed} tr.down{background:#ffe6e6} " + ;
-        "h1{font-size:1.4em} h2{font-size:1.1em;margin-top:28px}</style>" + ;
+        "<style>" + MonCssBase() + "</style>" + ;
         "</head><body>"
     Local aUnidades := oDash["UNIDADES"]
     Local aDbaccess := oDash["DBACCESS"]
     Local oLicense  := oDash["LICENSESERVER"]
+    Local nUp := 0
     Local oU
     Local oS
     Local i
     Local j
 
-    cHtml += "<h1>Monitor Protheus - Ortobom</h1>"
-    cHtml += "<p><a href='/config'>Configurar unidades</a> | <a href='/analise'>Analise historica (picos/memoria)</a></p>"
-    cHtml += "<p>Atualizado em " + oDash["ATUALIZADOEM"] + "</p>"
+    For i := 1 To Len(aUnidades)
+        If aUnidades[i]["UP"]
+            nUp++
+        EndIf
+    Next
 
+    cHtml += "<header class='topbar'><h1>Monitor Protheus - Ortobom</h1>" + ;
+        "<nav><a href='/config'>Configurar unidades</a><a href='/analise'>Analise historica</a></nav></header>"
+    cHtml += "<main>"
+    cHtml += "<p class='meta'>Atualizado em " + oDash["ATUALIZADOEM"] + " -- recarrega a cada " + ;
+        AllTrim(Str(nIntervalo)) + "s -- " + AllTrim(Str(nUp)) + "/" + AllTrim(Str(Len(aUnidades))) + " unidade(s) UP</p>"
+
+    cHtml += "<div class='card'><h2>Unidades</h2>"
     cHtml += "<table><tr><th>Unidade</th><th>Host:Porta</th><th>Status</th>" + ;
         "<th>Latencia(ms)</th><th>Sessoes ativas</th><th>Conexoes ativas</th></tr>"
     For i := 1 To Len(aUnidades)
         oU := aUnidades[i]
-        cHtml += "<tr class='" + IIF(oU["UP"], "up", "down") + "'>"
-        cHtml += "<td>" + oU["UNIDADE"] + "</td>"
+        cHtml += "<tr>"
+        cHtml += "<td><b>" + oU["UNIDADE"] + "</b></td>"
         cHtml += "<td><a href='" + MonUrlPaginaBroker(oU) + "' target='_blank'>" + oU["HOST"] + ":" + AllTrim(Str(oU["PORT"])) + "</a></td>"
-        cHtml += "<td>" + IIF(oU["UP"], "UP", "DOWN") + "</td>"
+        cHtml += "<td>" + MonBadge(IIF(oU["UP"], "UP", "DOWN")) + "</td>"
         cHtml += "<td>" + AllTrim(Str(Round(oU["LATENCIAMS"], 0))) + "</td>"
         cHtml += "<td>" + AllTrim(Str(oU["SESSOESATIVAS"])) + "</td>"
         cHtml += "<td>" + AllTrim(Str(oU["CONEXOESATIVAS"])) + "</td>"
         cHtml += "</tr>"
     Next
-    cHtml += "</table>"
+    cHtml += "</table></div>"
 
     For i := 1 To Len(aUnidades)
         oU := aUnidades[i]
         If Len(oU["SERVERS"]) > 0
-            cHtml += "<h2>" + oU["UNIDADE"] + " - servers do broker</h2>"
+            cHtml += "<div class='card'><h2>" + oU["UNIDADE"] + " - servers do broker</h2>"
             cHtml += "<table><tr><th>Host:Porta</th><th>Status</th><th>Usuarios</th>" + ;
                 "<th>Memoria(Kb)</th><th>Cpu(%)</th></tr>"
             For j := 1 To Len(oU["SERVERS"])
                 oS := oU["SERVERS"][j]
-                cHtml += "<tr class='" + IIF(oS["STATUS"] == "OK", "up", "down") + "'>"
+                cHtml += "<tr>"
                 cHtml += "<td><a href='" + MonUrlPaginaServer(oU, oS) + "' target='_blank'>" + oS["HOSTPORTA"] + "</a></td>"
-                cHtml += "<td>" + oS["STATUS"] + "</td>"
+                cHtml += "<td>" + MonBadge(oS["STATUS"]) + "</td>"
                 cHtml += "<td>" + AllTrim(Str(oS["USUARIOS"])) + "</td>"
                 cHtml += "<td>" + AllTrim(Str(oS["MEMORIAKB"])) + "</td>"
                 cHtml += "<td>" + AllTrim(Str(oS["CPU"])) + "</td>"
                 cHtml += "</tr>"
             Next
-            cHtml += "</table>"
+            cHtml += "</table></div>"
         EndIf
     Next
 
     If ValType(aDbaccess) == "A" .And. Len(aDbaccess) > 0
-        cHtml += "<h2>dbaccess</h2><table><tr><th>Unidade</th><th>Host:Porta</th>" + ;
+        cHtml += "<div class='card'><h2>dbaccess</h2><table><tr><th>Unidade</th><th>Host:Porta</th>" + ;
             "<th>Status</th><th>Latencia(ms)</th></tr>"
         For i := 1 To Len(aDbaccess)
             oU := aDbaccess[i]
             cHtml += MonLinhaChecagem(oU["UNIDADE"], oU["HOST"], oU["PORT"], oU["UP"], oU["LATENCIAMS"])
         Next
-        cHtml += "</table>"
+        cHtml += "</table></div>"
     EndIf
 
     If ValType(oLicense) == "O"
-        cHtml += "<h2>License Server</h2><table><tr><th>Host:Porta</th><th>Status</th>" + ;
+        cHtml += "<div class='card'><h2>License Server</h2><table><tr><th>Host:Porta</th><th>Status</th>" + ;
             "<th>Latencia(ms)</th></tr>"
         cHtml += MonLinhaChecagem("License Server", oLicense["HOST"], oLicense["PORT"], oLicense["UP"], oLicense["LATENCIAMS"])
-        cHtml += "</table>"
+        cHtml += "</table></div>"
     EndIf
 
-    cHtml += "</body></html>"
+    cHtml += "</main></body></html>"
 Return cHtml
 
 User Function MonRotaDashboard(oParams, cPathDashboard)
