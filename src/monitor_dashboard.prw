@@ -155,7 +155,7 @@ User Function MonGerarDashboardHtml(oDash)
     Local j
 
     cHtml += "<h1>Monitor Protheus - Ortobom</h1>"
-    cHtml += "<p><a href='/config'>Configurar unidades</a></p>"
+    cHtml += "<p><a href='/config'>Configurar unidades</a> | <a href='/analise'>Analise historica (picos/memoria)</a></p>"
     cHtml += "<p>Atualizado em " + oDash["ATUALIZADOEM"] + "</p>"
 
     cHtml += "<table><tr><th>Unidade</th><th>Host:Porta</th><th>Status</th>" + ;
@@ -236,5 +236,6 @@ User Function MonServirDashboard(nPorta)
     oServer:AddRoute("GET", "/", "MonRotaDashboard")
     oServer:AddRoute("GET", "/config", "MonRotaConfigForm")
     oServer:AddRoute("GET", "/config/salvar", "MonRotaConfigSalvar")
+    oServer:AddRoute("GET", "/analise", "MonRotaAnalise")
     oServer:Serve(nPorta)
 Return Nil

@@ -179,6 +179,22 @@ capturando tráfego vê a senha em texto claro. Trate como uma barreira
 contra edição acidental/casual por alguém sem querer, não como proteção
 contra alguém malicioso com acesso à rede `10.0.100.x`.
 
+### Coleta histórica e análise de capacidade
+
+A cada ciclo, o `MonitorService` também grava uma linha por server de
+cada unidade num CSV diário (`coleta_DDMMAAAA.csv`, na mesma pasta do
+serviço) — timestamp, unidade, host:porta, status, usuários, memória
+(Kb) e CPU do host. É a base de dados histórica pra decisão de
+capacidade: quantos usuários simultâneos cada unidade aguenta, em que
+faixa de horário o pico acontece, e quanta memória cada usuário a mais
+consome (regressão linear simples sobre usuários × memória).
+
+O link **"Análise histórica"** na página principal do dashboard
+(`/analise`) mostra isso pronto: pico de usuários (máximo e P95) por
+unidade e faixa de horário (00-08/08-12/12-18/18-24), e por unidade a
+memória base (MB) e o incremento estimado por usuário (MB), com base
+nos últimos 30 dias de coleta.
+
 ## Rodar os testes
 
 `tests/monitor_lib_test.prw` cobre `src/monitor_lib.prw` (checagem TCP
@@ -198,6 +214,10 @@ manualmente). `tests/monitor_config_ui_test.prw` cobre
 unidades, round-trip completo de gravação do `config.json` preservando
 as demais chaves, e as rotas `/config`/`/config/salvar` — incluindo
 senha certa/errada/ausente — sem precisar de rede).
+`tests/monitor_coleta_test.prw` cobre `src/monitor_coleta.prw` (append
+no CSV diário sem duplicar cabeçalho, filtro de servers OK na leitura,
+faixa de horário, pico/P95 por unidade+faixa e a regressão linear de
+memória por usuário — tudo sobre arquivo local, sem rede).
 Alguns testes (`monitor_lib_test.prw`/`monitor_broker_test.prw`, em
 funções como `MonPingServico`/`MonCheckBroker`) precisam de um servidor
 HTTP real escutando em `127.0.0.1:19191` antes de rodar a suite — a
@@ -223,7 +243,7 @@ não precisa do listener.
        http.server.HTTPServer(('127.0.0.1', 19191), H).serve_forever()
        "
 
-2. Em outro terminal, rode as cinco suites (ajuste o caminho do
+2. Em outro terminal, rode as seis suites (ajuste o caminho do
    `advplc` pra onde ele estiver instalado):
 
        cd tests && /caminho/para/advplc run monitor_lib_test.prw
@@ -231,11 +251,12 @@ não precisa do listener.
        cd tests && /caminho/para/advplc run monitor_dashboard_test.prw
        cd tests && /caminho/para/advplc run monitor_config_ui_test.prw
        cd tests && /caminho/para/advplc run monitor_tui_lib_test.prw
+       cd tests && /caminho/para/advplc run monitor_coleta_test.prw
 
 3. A última linha da saída de cada suite deve ser `MONITOR_LIB_TEST_FIM`,
    `MONITOR_BROKER_TEST_FIM`, `MONITOR_DASHBOARD_TEST_FIM`,
-   `MONITOR_CONFIG_UI_TEST_FIM` ou `MONITOR_TUI_LIB_TEST_FIM` (conforme
-   a suite), sem nenhuma linha de
+   `MONITOR_CONFIG_UI_TEST_FIM`, `MONITOR_TUI_LIB_TEST_FIM` ou
+   `MONITOR_COLETA_TEST_FIM` (conforme a suite), sem nenhuma linha de
    erro do compilador/interpretador acima dela. Cada asserção individual aparece
    como `testeN_descricao=SIM|NAO` (ou o valor esperado, ex:
    `teste45_latencia_arredondada=1`) — releia a saída se algo não bater.

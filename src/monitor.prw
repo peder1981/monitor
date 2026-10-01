@@ -2,6 +2,7 @@
 #include "monitor_broker.prw"
 #include "monitor_dashboard.prw"
 #include "monitor_config_ui.prw"
+#include "monitor_coleta.prw"
 
 User Function MonitorMain()
     Local cConfigPath    := "config.json"
@@ -69,6 +70,7 @@ User Function MonitorMain()
         EndIf
 
         MonSalvarDashboard(cDashboardPath, aResUnidades, aResDbaccess, oResLicense, oConfig["intervaloSegundos"])
+        MonColetarAmostra(MonColetaArquivoHoje(), aResUnidades)
         MonSaveState(cStatePath, oState)
         Sleep(oConfig["intervaloSegundos"] * 1000)
     EndDo

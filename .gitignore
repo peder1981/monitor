@@ -5,3 +5,4 @@ dist/
 state.json
 dashboard.json
 config.json
+coleta_*.csv
