@@ -148,11 +148,26 @@ em quarentena). A página recarrega periodicamente sozinha e reflete
 sempre o resultado do ciclo de checagem mais recente — não é preciso
 reiniciar nada pra ela atualizar.
 
-Captura real da página (ambiente de demonstração — duas unidades no ar,
-uma fora, e um server em quarentena aparecendo na tabela da unidade
-ORTORJ):
+Capturas reais de produção (15 unidades Ortobom, ambiente real):
 
-![Dashboard web consolidado](docs/screenshots/dashboard-web.jpg)
+**Painel de unidades** — status, latência e sessões/conexões ativas de
+cada uma, com link direto pra página do broker:
+
+![Dashboard web - unidades](docs/screenshots/dashboard-web-unidades.png)
+
+**Servers do broker por unidade** — usuários, memória e CPU de cada
+instância balanceada:
+
+![Dashboard web - servers ORTOSP](docs/screenshots/dashboard-web-servers-ortosp.png)
+
+Server em quarentena (ORTOFB, porta 1240) aparecendo com destaque na
+tabela da própria unidade:
+
+![Dashboard web - servers ORTOFB com quarentena](docs/screenshots/dashboard-web-servers-ortofb.png)
+
+**Checagem do dbaccess** de cada unidade:
+
+![Dashboard web - dbaccess](docs/screenshots/dashboard-web-dbaccess.png)
 
 ### Editar unidades pelo dashboard
 
