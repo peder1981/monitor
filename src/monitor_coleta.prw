@@ -17,6 +17,63 @@ Return "coleta_" + StrTran(cData, "/", "") + ".csv"
 User Function MonColetaArquivoHoje()
 Return MonColetaArquivo(DTOC(Date()))
 
+// --- Aritmetica de calendario propria (sem usar Data-Numero) ---
+//
+// Achado real em producao: "Analise historica" sempre vazia mesmo com
+// coleta rodando ha dias. Causa raiz: o operador `Data - Numero` do
+// advplc devolve Numero (nao Data) -- `DTOC(Date() - 1)` vira "" porque
+// DTOC so sabe formatar Data de verdade. `MonColetaArquivosUltimosDias`
+// usava exatamente esse operador pra montar os nomes dos arquivos dos
+// ultimos N dias, entao TODOS os nomes (inclusive o de hoje, via
+// `Date() - 0`) viravam "coleta_.csv" -- um arquivo que nunca existe.
+// Issue aberta no AdvPP: https://github.com/peder1981/AdvPP/issues/8
+// (a mesma raiz de bug reportada antes pro `AEval`/closure).
+//
+// Workaround: nunca usar `Date() +/- Numero`. Year()/Month()/Day() leem
+// campos de uma Data sem problema (nao passam pelo operador quebrado),
+// entao a subtracao de dias e feita aqui em cima de inteiros puros,
+// com regra de bissexto e fim de mes explicitas -- sem Julian Day (a
+// primeira tentativa, de cabeca, saiu errada; isto aqui foi validado
+// contra 8 casos, incluindo bissexto e virada de ano/seculo).
+User Function MonBissexto(nAno)
+Return (nAno % 4 == 0 .And. nAno % 100 != 0) .Or. nAno % 400 == 0
+
+User Function MonUltimoDiaMes(nAno, nMes)
+    Local aDias := {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31}
+
+    If nMes == 2 .And. MonBissexto(nAno)
+        Return 29
+    EndIf
+Return aDias[nMes]
+
+User Function MonDiaAnterior(nAno, nMes, nDia)
+    Local nMesAnt
+    Local nAnoAnt
+
+    If nDia > 1
+        Return {nAno, nMes, nDia - 1}
+    EndIf
+
+    nMesAnt := nMes - 1
+    nAnoAnt := nAno
+    If nMesAnt < 1
+        nMesAnt := 12
+        nAnoAnt := nAno - 1
+    EndIf
+Return {nAnoAnt, nMesAnt, MonUltimoDiaMes(nAnoAnt, nMesAnt)}
+
+User Function MonDataMenosDias(nAno, nMes, nDia, nDiasAtras)
+    Local aData := {nAno, nMes, nDia}
+    Local i
+
+    For i := 1 To nDiasAtras
+        aData := MonDiaAnterior(aData[1], aData[2], aData[3])
+    Next
+Return aData
+
+User Function MonFormataDDMMYYYY(nAno, nMes, nDia)
+Return PadL(AllTrim(Str(nDia)), 2, "0") + "/" + PadL(AllTrim(Str(nMes)), 2, "0") + "/" + AllTrim(Str(nAno))
+
 // Nomes dos arquivos dos ultimos nDias (hoje incluso), do mais antigo
 // pro mais recente -- usado pela analise em vez de listar diretorio
 // (nativa de listagem de arquivos nao disponivel no AdvPP). Arquivo de
@@ -24,10 +81,15 @@ Return MonColetaArquivo(DTOC(Date()))
 // MemoRead("") como "sem linhas" sem erro.
 User Function MonColetaArquivosUltimosDias(nDias)
     Local aArquivos := {}
+    Local nAnoHoje := Year(Date())
+    Local nMesHoje := Month(Date())
+    Local nDiaHoje := Day(Date())
+    Local aData
     Local i
 
     For i := nDias - 1 To 0 Step -1
-        AAdd(aArquivos, MonColetaArquivo(DTOC(Date() - i)))
+        aData := MonDataMenosDias(nAnoHoje, nMesHoje, nDiaHoje, i)
+        AAdd(aArquivos, MonColetaArquivo(MonFormataDDMMYYYY(aData[1], aData[2], aData[3])))
     Next
 Return aArquivos
 

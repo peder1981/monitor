@@ -216,8 +216,10 @@ as demais chaves, e as rotas `/config`/`/config/salvar` — incluindo
 senha certa/errada/ausente — sem precisar de rede).
 `tests/monitor_coleta_test.prw` cobre `src/monitor_coleta.prw` (append
 no CSV diário sem duplicar cabeçalho, filtro de servers OK na leitura,
-faixa de horário, pico/P95 por unidade+faixa e a regressão linear de
-memória por usuário — tudo sobre arquivo local, sem rede).
+faixa de horário, pico/P95 por unidade+faixa, a regressão linear de
+memória por usuário, e a aritmética de calendário própria usada pra
+montar os nomes dos arquivos dos últimos N dias — tudo sobre arquivo
+local, sem rede).
 Alguns testes (`monitor_lib_test.prw`/`monitor_broker_test.prw`, em
 funções como `MonPingServico`/`MonCheckBroker`) precisam de um servidor
 HTTP real escutando em `127.0.0.1:19191` antes de rodar a suite — a

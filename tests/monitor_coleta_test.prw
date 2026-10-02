@@ -17,6 +17,44 @@ Static Function MonTesteUnidade(cNome, aServers)
 Return oU
 
 User Function MonitorColetaTest()
+    // Aritmetica de calendario propria (ver comentario em MonColetaArquivosUltimosDias
+    // sobre `Date() - Numero` devolver Numero em vez de Data no advplc --
+    // issue github.com/peder1981/AdvPP/issues/8). Regressao real: sem
+    // isso, /analise ficava sempre vazia em producao mesmo com dias de
+    // coleta acumulados.
+    Local aR
+
+    ConOut("testeCal1_bissexto_2024=" + IIF(MonBissexto(2024), "SIM", "NAO"))
+    ConOut("testeCal2_nao_bissexto_2026=" + IIF(MonBissexto(2026), "SIM", "NAO"))
+    ConOut("testeCal3_seculo_nao_bissexto_2100=" + IIF(MonBissexto(2100), "SIM", "NAO"))
+    ConOut("testeCal4_seculo_bissexto_2000=" + IIF(MonBissexto(2000), "SIM", "NAO"))
+
+    aR := MonDataMenosDias(2026, 1, 1, 1)
+    ConOut("testeCal5_01jan2026_menos1=" + AllTrim(Str(aR[1])) + "-" + AllTrim(Str(aR[2])) + "-" + AllTrim(Str(aR[3])))
+
+    aR := MonDataMenosDias(2024, 3, 1, 1)
+    ConOut("testeCal6_01mar2024_menos1_bissexto=" + AllTrim(Str(aR[1])) + "-" + AllTrim(Str(aR[2])) + "-" + AllTrim(Str(aR[3])))
+
+    aR := MonDataMenosDias(2026, 10, 2, 0)
+    ConOut("testeCal7_menos0_nao_muda=" + AllTrim(Str(aR[1])) + "-" + AllTrim(Str(aR[2])) + "-" + AllTrim(Str(aR[3])))
+
+    ConOut("testeCal8_formata_com_zero=" + MonFormataDDMMYYYY(2026, 1, 2))
+
+    // teste real do bug: antes da correcao, todo nome de arquivo virava
+    // "coleta_.csv" (Date()-i sempre devolvia "" via DTOC) -- agora cada
+    // nome tem 8 digitos de data (DDMMAAAA) e nenhum fica vazio.
+    Local aArquivos := MonColetaArquivosUltimosDias(5)
+    Local lTodosValidos := .T.
+    Local i
+    For i := 1 To Len(aArquivos)
+        If !("coleta_" $ aArquivos[i]) .Or. Len(aArquivos[i]) != Len("coleta_DDMMAAAA.csv")
+            lTodosValidos := .F.
+        EndIf
+    Next
+    ConOut("testeCal9_qtd_arquivos=" + Str(Len(aArquivos)))
+    ConOut("testeCal10_todos_arquivos_com_data_valida=" + IIF(lTodosValidos, "SIM", "NAO"))
+    ConOut("testeCal11_ultimo_arquivo_eh_hoje=" + IIF(aArquivos[Len(aArquivos)] == MonColetaArquivoHoje(), "SIM", "NAO"))
+
     Local cArquivo := "test_coleta.csv"
     Local aRes1
     Local aRes2
